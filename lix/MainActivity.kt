@@ -442,7 +442,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (prompt.startsWith("¿Qué recordás?", true) || prompt.startsWith("Que recordas", true)) {
+        if (prompt.startsWith("¿Qué recordás", true) || prompt.startsWith("Que recordas", true)) {
             addMessage("VOS", prompt)
             addMessage("LIX", prefs.getString("memory", "")?.ifBlank { "No tengo recuerdos guardados todavía." } ?: "No tengo recuerdos guardados todavía.")
             input.setText("")
@@ -628,6 +628,11 @@ class MainActivity : AppCompatActivity() {
                 }
                 append("\n")
             }
+            selectedFileText?.takeIf { it.isNotBlank() }?.let { fileText ->
+                append("ARCHIVO ADJUNTO:\n")
+                append(fileText.take(12000))
+                append("\n\n")
+            }
             if (lastSearchContext.isNotBlank()) {
                 append("RESULTADOS DE INTERNET:\n")
                 append(lastSearchContext.take(10000))
@@ -702,10 +707,10 @@ class MainActivity : AppCompatActivity() {
                         .replace(Regex("(?is)<script.*?</script>"), " ")
                         .replace(Regex("(?is)<style.*?</style>"), " ")
                         .replace(Regex("<[^>]+>"), " ")
-                        .replace("&quot;", """)
+                        .replace("&quot;", "\"")
                         .replace("&#x27;", "'")
                         .replace("&amp;", "&")
-                        .replace(Regex("\s+"), " ")
+                        .replace(Regex("\\s+"), " ")
                         .trim()
                     if (cleaned.isBlank()) "No pude obtener resultados de Internet." else cleaned.take(14000)
                 }
