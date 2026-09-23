@@ -9,7 +9,6 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.HorizontalScrollView
-import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -35,16 +34,21 @@ class MainActivity : AppCompatActivity() {
     private var generation: Job? = null
     private var ready = false
 
-    private val bg = Color.rgb(4, 8, 16)
-    private val panel = Color.rgb(10, 19, 32)
-    private val panel2 = Color.rgb(14, 26, 43)
-    private val accent = Color.rgb(50, 165, 255)
-    private val accent2 = Color.rgb(25, 105, 190)
-    private val text = Color.rgb(235, 242, 250)
-    private val muted = Color.rgb(145, 165, 188)
+    private val bg = Color.rgb(3, 7, 14)
+    private val panel = Color.rgb(8, 18, 30)
+    private val panel2 = Color.rgb(11, 25, 41)
+    private val panel3 = Color.rgb(14, 31, 50)
+    private val border = Color.rgb(24, 61, 91)
+    private val accent = Color.rgb(52, 166, 255)
+    private val accentDark = Color.rgb(18, 73, 120)
+    private val textColor = Color.rgb(237, 243, 250)
+    private val muted = Color.rgb(142, 163, 185)
+    private val green = Color.rgb(71, 232, 124)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = bg
+        window.navigationBarColor = bg
         buildUi()
         lifecycleScope.launch(Dispatchers.IO) {
             engine = AiChat.getInferenceEngine(applicationContext)
@@ -55,11 +59,16 @@ class MainActivity : AppCompatActivity() {
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
 
-    private fun rounded(color: Int, radius: Int = 16, strokeColor: Int? = null): GradientDrawable =
+    private fun rounded(
+        color: Int,
+        radius: Int = 16,
+        strokeColor: Int? = null,
+        strokeWidth: Int = 1
+    ): GradientDrawable =
         GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
-            strokeColor?.let { setStroke(dp(1), it) }
+            strokeColor?.let { setStroke(dp(strokeWidth), it) }
         }
 
     private fun label(value: String, size: Float = 12f, color: Int = muted): TextView =
@@ -67,27 +76,38 @@ class MainActivity : AppCompatActivity() {
             text = value
             textSize = size
             setTextColor(color)
+            includeFontPadding = false
+        }
+
+    private fun horizontalScroller(): HorizontalScrollView =
+        HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+            overScrollMode = View.OVER_SCROLL_NEVER
         }
 
     private fun buildUi() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(bg)
-            setPadding(dp(14), dp(18), dp(14), dp(10))
+            setPadding(dp(16), dp(10), dp(16), dp(8))
         }
 
-        val top = LinearLayout(this).apply {
+        // Header
+        val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dp(72)
         }
 
         val menu = TextView(this).apply {
             text = "☰"
-            textSize = 28f
-            setTextColor(this@MainActivity.text)
+            textSize = 29f
+            setTextColor(textColor)
             gravity = Gravity.CENTER
+            background = rounded(Color.TRANSPARENT, 14)
         }
-        top.addView(menu, LinearLayout.LayoutParams(dp(42), dp(48)))
+        header.addView(menu, LinearLayout.LayoutParams(dp(48), dp(58)))
 
         val brand = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -98,184 +118,242 @@ class MainActivity : AppCompatActivity() {
             textSize = 38f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
+            includeFontPadding = false
+        }, LinearLayout.LayoutParams(-1, dp(40)))
+        brand.addView(label("TU ASISTENTE INTELIGENTE", 10f, accent).apply {
+            gravity = Gravity.CENTER
         })
-        brand.addView(label("TU ASISTENTE INTELIGENTE", 10f, accent))
-        brand.addView(label("PENSÁ  •  CREÁ  •  RESOLVÉ  •  AVANZÁ", 7f, muted))
-        top.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
-        top.addView(TextView(this).apply {
+        brand.addView(label("PENSÁ  •  CREÁ  •  RESOLVÉ  •  AVANZÁ", 7.5f, muted).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(2), 0, 0)
+        })
+        header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
+
+        header.addView(TextView(this).apply {
             text = "☼"
-            textSize = 26f
+            textSize = 29f
             setTextColor(accent)
             gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(dp(42), dp(48)))
-        root.addView(top)
+        }, LinearLayout.LayoutParams(dp(48), dp(58)))
 
+        root.addView(header)
+
+        // Status card
         val info = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = rounded(panel, 16, Color.rgb(28, 57, 87))
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(13), dp(16), dp(13))
+            background = rounded(panel, 18, border)
         }
-        info.addView(label("●  Lix Online", 15f, Color.rgb(70, 235, 125)))
-        status = label("Modelo: Qwen3 1.7B (Local)", 12f, text)
-        info.addView(status, LinearLayout.LayoutParams(-1, -2))
-        info.addView(label("◉  Motor local activo", 11f, muted))
-        root.addView(info, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(8)
+
+        info.addView(label("●  Lix Online", 15f, green).apply {
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        status = label("Modelo: Qwen3 1.7B (Local)", 12.5f, textColor)
+        info.addView(status, LinearLayout.LayoutParams(-1, dp(24)))
+        info.addView(label("◉  Motor local activo", 11.5f, muted))
+
+        root.addView(info, LinearLayout.LayoutParams(-1, dp(122)).apply {
+            topMargin = dp(7)
         })
 
-        val toolsScroll = HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-        }
+        // Main tool tabs
+        val toolsScroll = horizontalScroller()
+        toolsScroll.setPadding(0, dp(9), 0, dp(4))
         val tools = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(10), 0, dp(8))
         }
-        val toolNames = arrayOf("▣  Chat", "◎  Internet", "□  Proyecto", "▤  Archivos", "</>  Código", "♩  Voz", "▥  Memoria", "⚙  Ajustes")
+
+        val toolNames = arrayOf(
+            "▣  Chat", "◎  Internet", "□  Proyecto", "▤  Archivos",
+            "</>  Código", "♩  Voz", "▥  Memoria", "⚙  Ajustes"
+        )
+
         toolNames.forEachIndexed { index, name ->
-            val b = TextView(this).apply {
+            val chip = TextView(this).apply {
                 text = name
                 textSize = 11f
-                setTextColor(if (index == 0) Color.WHITE else this@MainActivity.text)
+                setTextColor(if (index == 0) Color.WHITE else textColor)
                 gravity = Gravity.CENTER
-                setPadding(dp(14), dp(10), dp(14), dp(10))
-                background = rounded(if (index == 0) Color.rgb(16, 48, 78) else panel, 12,
-                    if (index == 0) accent else Color.rgb(25, 47, 69))
+                setPadding(dp(13), 0, dp(13), 0)
+                background = rounded(
+                    if (index == 0) Color.rgb(14, 48, 78) else panel,
+                    15,
+                    if (index == 0) accent else border
+                )
             }
-            tools.addView(b, LinearLayout.LayoutParams(dp(92), dp(48)).apply {
-                marginEnd = dp(6)
+            tools.addView(chip, LinearLayout.LayoutParams(dp(132), dp(50)).apply {
+                marginEnd = dp(8)
             })
-        }
-        toolsScroll.addView(tools)
-        root.addView(toolsScroll)
+        })
 
+        toolsScroll.addView(tools)
+        root.addView(toolsScroll, LinearLayout.LayoutParams(-1, dp(63)))
+
+        // Chat area
         scroll = ScrollView(this).apply {
             isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_NEVER
         }
+
         chat = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(2), dp(6), dp(2), dp(12))
+            setPadding(dp(1), dp(4), dp(1), dp(10))
         }
+
         scroll.addView(chat)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        val quickScroll = HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-        }
+        // Quick actions
+        val quickScroll = horizontalScroller()
+        quickScroll.setPadding(0, dp(2), 0, dp(4))
         val quick = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
         }
-        arrayOf("Buscar en Internet", "Ver mi proyecto", "Analizar un archivo", "Ayudarme a programar", "Recordar algo", "Modo voz").forEach { action ->
-            val b = TextView(this).apply {
-                text = action
-                textSize = 10f
-                setTextColor(this@MainActivity.text)
-                gravity = Gravity.CENTER
-                setPadding(dp(12), dp(9), dp(12), dp(9))
-                background = rounded(panel2, 12, Color.rgb(24, 70, 105))
-                setOnClickListener { input.setText(action); input.requestFocus() }
-            }
-            quick.addView(b, LinearLayout.LayoutParams(dp(145), dp(42)).apply {
-                marginEnd = dp(7)
-            })
-        }
-        quickScroll.addView(quick)
-        root.addView(quickScroll)
 
+        arrayOf(
+            "Buscar en Internet",
+            "Ver mi proyecto",
+            "Analizar un archivo",
+            "Ayudarme a programar",
+            "Recordar algo",
+            "Modo voz"
+        ).forEach { action ->
+            val chip = TextView(this).apply {
+                text = action
+                textSize = 10.5f
+                setTextColor(textColor)
+                gravity = Gravity.CENTER
+                setPadding(dp(13), 0, dp(13), 0)
+                background = rounded(panel2, 14, border)
+                setOnClickListener {
+                    input.setText(action)
+                    input.setSelection(input.text.length)
+                    input.requestFocus()
+                }
+            }
+            quick.addView(chip, LinearLayout.LayoutParams(dp(176), dp(45)).apply {
+                marginEnd = dp(8)
+            })
+        })
+
+        quickScroll.addView(quick)
+        root.addView(quickScroll, LinearLayout.LayoutParams(-1, dp(53)))
+
+        // Composer
         val inputRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(8), 0, dp(4))
+            setPadding(0, dp(4), 0, dp(6))
         }
 
         val attach = TextView(this).apply {
-            text = "⌕"
-            textSize = 25f
+            text = "+"
+            textSize = 28f
+            setTextColor(textColor)
             gravity = Gravity.CENTER
-            setTextColor(this@MainActivity.text)
-            background = rounded(panel, 14, Color.rgb(31, 63, 91))
+            background = rounded(panel, 15, border)
         }
-        inputRow.addView(attach, LinearLayout.LayoutParams(dp(48), dp(52)).apply {
-            marginEnd = dp(7)
+        inputRow.addView(attach, LinearLayout.LayoutParams(dp(52), dp(58)).apply {
+            marginEnd = dp(8)
         })
 
         input = EditText(this).apply {
             hint = "Escribí tu mensaje..."
             textSize = 14f
-            setHintTextColor(Color.rgb(110, 130, 150))
-            setTextColor(this@MainActivity.text)
+            setHintTextColor(Color.rgb(105, 126, 148))
+            setTextColor(textColor)
             setSingleLine(false)
             maxLines = 3
-            setPadding(dp(14), 0, dp(12), 0)
-            background = rounded(panel, 14, Color.rgb(29, 57, 82))
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(15), 0, dp(12), 0)
+            background = rounded(panel, 15, border)
             isEnabled = false
         }
-        inputRow.addView(input, LinearLayout.LayoutParams(0, dp(52), 1f))
+        inputRow.addView(input, LinearLayout.LayoutParams(0, dp(58), 1f))
 
         val voice = TextView(this).apply {
-            text = "♩"
-            textSize = 22f
+            text = "◉"
+            textSize = 20f
+            setTextColor(textColor)
             gravity = Gravity.CENTER
-            setTextColor(this@MainActivity.text)
-            background = rounded(panel, 14, Color.rgb(31, 63, 91))
+            background = rounded(panel, 15, border)
         }
-        inputRow.addView(voice, LinearLayout.LayoutParams(dp(48), dp(52)).apply {
-            marginStart = dp(7)
+        inputRow.addView(voice, LinearLayout.LayoutParams(dp(52), dp(58)).apply {
+            marginStart = dp(8)
         })
 
         send = Button(this).apply {
             text = "➤"
-            textSize = 20f
+            textSize = 22f
             setTextColor(Color.WHITE)
-            background = rounded(Color.rgb(20, 115, 230), 14)
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(22, 119, 238), 15)
             isAllCaps = false
             isEnabled = false
+            setPadding(0, 0, 0, 0)
             setOnClickListener { sendMessage() }
         }
-        inputRow.addView(send, LinearLayout.LayoutParams(dp(56), dp(52)).apply {
-            marginStart = dp(7)
+        inputRow.addView(send, LinearLayout.LayoutParams(dp(62), dp(58)).apply {
+            marginStart = dp(8)
         })
+
         root.addView(inputRow)
 
+        // Bottom navigation
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(0, dp(6), 0, 0)
-            background = rounded(Color.rgb(6, 12, 22), 18, Color.rgb(19, 38, 59))
+            setPadding(dp(2), dp(4), dp(2), 0)
+            background = rounded(Color.rgb(5, 12, 22), 18, Color.rgb(19, 40, 61))
         }
-        arrayOf("⌂\nInicio", "▦\nHerramientas", "◉\nLix", "◴\nHistorial", "♙\nPerfil").forEachIndexed { index, item ->
-            val n = TextView(this).apply {
+
+        arrayOf(
+            "⌂\nInicio",
+            "▦\nHerramientas",
+            "◉\nLix",
+            "◴\nHistorial",
+            "♙\nPerfil"
+        ).forEachIndexed { index, item ->
+            val navItem = TextView(this).apply {
                 text = item
-                textSize = if (index == 2) 11f else 10f
+                textSize = if (index == 2) 10.5f else 9.5f
                 gravity = Gravity.CENTER
                 setTextColor(if (index == 2) accent else muted)
-                setPadding(0, dp(7), 0, dp(7))
+                setPadding(0, dp(7), 0, dp(6))
+                includeFontPadding = false
             }
-            nav.addView(n, LinearLayout.LayoutParams(0, dp(52), 1f))
+            nav.addView(navItem, LinearLayout.LayoutParams(0, dp(53), 1f))
         }
-        root.addView(nav)
+
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(59)))
 
         root.addView(label("Lix v1.0  |  La inteligencia también puede ser tuya", 8f, muted).apply {
             gravity = Gravity.CENTER
             setPadding(0, dp(5), 0, 0)
-        })
+        }, LinearLayout.LayoutParams(-1, dp(18)))
 
         setContentView(root)
     }
 
     private suspend fun prepareModel() {
         val model = File(filesDir, "models/lix-qwen3-1.7b-q4_k_m.gguf")
+
         withContext(Dispatchers.Main) {
             status.text = "Modelo: Qwen3 1.7B (Local)  •  PREPARANDO..."
         }
+
         if (!model.exists()) {
             model.parentFile?.mkdirs()
             assets.open("models/lix-qwen3-1.7b-q4_k_m.gguf").use { source ->
                 FileOutputStream(model).use { target -> source.copyTo(target) }
             }
         }
+
         withContext(Dispatchers.Main) {
             status.text = "Modelo: Qwen3 1.7B (Local)  •  CARGANDO..."
         }
+
         engine.loadModel(model.absolutePath)
         engine.setSystemPrompt(
             "Sos Lix, un asistente inteligente personal. " +
@@ -285,18 +363,23 @@ class MainActivity : AppCompatActivity() {
             "archivos, aprendizaje, memoria y herramientas cuando estén disponibles. " +
             "No muestres etiquetas de razonamiento como <think> o </think> en tu respuesta final."
         )
+
         withContext(Dispatchers.Main) {
             ready = true
             status.text = "Modelo: Qwen3 1.7B (Local)  •  ONLINE"
             input.isEnabled = true
             send.isEnabled = true
-            addMessage("LIX", "Hola, compa.\nSoy Lix, tu asistente inteligente.\nEstoy acá para ayudarte con lo que necesites.")
+            addMessage(
+                "LIX",
+                "Hola, compa.\nSoy Lix, tu asistente inteligente.\nEstoy acá para ayudarte con lo que necesites."
+            )
         }
     }
 
     private fun cleanAnswer(raw: String): String {
         var result = raw
         val thinkStart = result.indexOf("<think>", ignoreCase = true)
+
         if (thinkStart >= 0) {
             val thinkEnd = result.indexOf("</think>", thinkStart, ignoreCase = true)
             result = if (thinkEnd >= 0) {
@@ -305,7 +388,9 @@ class MainActivity : AppCompatActivity() {
                 result.substring(0, thinkStart)
             }
         }
-        return result.replace("<think>", "", ignoreCase = true)
+
+        return result
+            .replace("<think>", "", ignoreCase = true)
             .replace("</think>", "", ignoreCase = true)
             .trim()
     }
@@ -313,6 +398,7 @@ class MainActivity : AppCompatActivity() {
     private fun sendMessage() {
         val prompt = input.text.toString().trim()
         if (prompt.isEmpty() || !ready) return
+
         input.setText("")
         input.isEnabled = false
         send.isEnabled = false
@@ -321,10 +407,11 @@ class MainActivity : AppCompatActivity() {
         val answer = TextView(this).apply {
             text = "Lix está pensando..."
             textSize = 15f
-            setTextColor(this@MainActivity.text)
+            setTextColor(textColor)
             setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = rounded(panel2, 14, Color.rgb(24, 55, 82))
+            background = rounded(panel2, 14, border)
         }
+
         chat.addView(answer, LinearLayout.LayoutParams(-1, -2).apply {
             bottomMargin = dp(10)
         })
@@ -332,6 +419,7 @@ class MainActivity : AppCompatActivity() {
 
         generation = lifecycleScope.launch(Dispatchers.Default) {
             val result = StringBuilder()
+
             engine.sendUserPrompt(prompt)
                 .onCompletion {
                     withContext(Dispatchers.Main) {
@@ -343,8 +431,10 @@ class MainActivity : AppCompatActivity() {
                 .collect { token ->
                     result.append(token)
                     val cleaned = cleanAnswer(result.toString())
+
                     withContext(Dispatchers.Main) {
-                        answer.text = if (cleaned.isBlank()) "Lix está pensando..." else cleaned
+                        answer.text =
+                            if (cleaned.isBlank()) "Lix está pensando..." else cleaned
                         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
                     }
                 }
@@ -355,11 +445,15 @@ class MainActivity : AppCompatActivity() {
         val bubble = TextView(this).apply {
             this.text = "$author\n$message"
             textSize = 15f
-            setTextColor(this@MainActivity.text)
+            setTextColor(textColor)
             setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = rounded(if (author == "VOS") Color.rgb(8, 55, 94) else panel, 14,
-                if (author == "VOS") Color.rgb(24, 115, 180) else Color.rgb(24, 50, 74))
+            background = rounded(
+                if (author == "VOS") Color.rgb(8, 55, 94) else panel,
+                15,
+                if (author == "VOS") Color.rgb(24, 115, 180) else border
+            )
         }
+
         chat.addView(bubble, LinearLayout.LayoutParams(-1, -2).apply {
             bottomMargin = dp(10)
         })
