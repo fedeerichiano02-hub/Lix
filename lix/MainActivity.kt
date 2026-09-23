@@ -38,6 +38,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 class MainActivity : AppCompatActivity() {
     private lateinit var engine: InferenceEngine
@@ -49,6 +54,8 @@ class MainActivity : AppCompatActivity() {
     private var generation: Job? = null
     private var ready = false
     private var internetMode = false
+    private var lastSearchContext = ""
+    private var lastUiUpdate = 0L
     private var selectedFileText: String? = null
     private var profileName = "compa"
     private val history = mutableListOf<Pair<String, String>>()
@@ -443,9 +450,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (internetMode) {
-            openWeb(prompt)
-            internetMode = false
             input.setText("")
+            input.isEnabled = false
+            send.isEnabled = false
+            internetMode = false
+            addMessage("VOS", prompt)
+            searchInternetAndAnswer(prompt)
             return
         }
 
@@ -456,13 +466,7 @@ class MainActivity : AppCompatActivity() {
         history.add("VOS" to prompt)
         saveHistory()
 
-        val enriched = buildString {
-            append(prompt)
-            selectedFileText?.let {
-                append("\n\nARCHIVO ADJUNTO:\n")
-                append(it.take(12000))
-            }
-        }
+        val enriched = buildContextPrompt(prompt)
         selectedFileText = null
 
         val answer = TextView(this).apply {
@@ -494,10 +498,14 @@ class MainActivity : AppCompatActivity() {
                 }
                 .collect { token ->
                     result.append(token)
-                    val cleaned = cleanAnswer(result.toString())
-                    withContext(Dispatchers.Main) {
-                        answer.text = if (cleaned.isBlank()) "Lix está pensando..." else cleaned
-                        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                    val now = System.currentTimeMillis()
+                    if (now - lastUiUpdate >= 70L) {
+                        lastUiUpdate = now
+                        val cleaned = cleanAnswer(result.toString())
+                        withContext(Dispatchers.Main) {
+                            answer.text = if (cleaned.isBlank()) "Lix está pensando..." else cleaned
+                            scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                        }
                     }
                 }
         }
@@ -603,9 +611,108 @@ class MainActivity : AppCompatActivity() {
         "No se pudo leer este archivo: ${e.message}"
     }
 
-    private fun openWeb(query: String) {
-        val q = Uri.encode(query)
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$q")))
+    private fun buildContextPrompt(prompt: String): String {
+        return buildString {
+            append("CONTEXTO DE LIX:\n")
+            val memory = prefs.getString("memory", "")?.trim().orEmpty()
+            if (memory.isNotBlank()) {
+                append("MEMORIA DEL USUARIO:\n")
+                append(memory.take(6000))
+                append("\n\n")
+            }
+            val recent = history.takeLast(8)
+            if (recent.isNotEmpty()) {
+                append("CONVERSACIÓN RECIENTE:\n")
+                recent.forEach { (author, message) ->
+                    append(author).append(": ").append(message.take(1800)).append("\n")
+                }
+                append("\n")
+            }
+            if (lastSearchContext.isNotBlank()) {
+                append("RESULTADOS DE INTERNET:\n")
+                append(lastSearchContext.take(10000))
+                append("\n\n")
+            }
+            append("MENSAJE ACTUAL:\n")
+            append(prompt)
+            append("\n\nRespondé directamente en español argentino. No inventes datos.")
+        }
+    }
+
+    private fun searchInternetAndAnswer(query: String) {
+        val answer = TextView(this).apply {
+            text = "Lix está buscando en Internet..."
+            textSize = 15f
+            setTextColor(textColor)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = rounded(panel2, 14, border)
+        }
+        chat.addView(answer, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+
+        generation = lifecycleScope.launch(Dispatchers.IO) {
+            val web = fetchSearchResults(query)
+            lastSearchContext = web
+            if (web.startsWith("No pude")) {
+                withContext(Dispatchers.Main) {
+                    answer.text = web
+                    input.isEnabled = true
+                    send.isEnabled = true
+                }
+                return@launch
+            }
+            val result = StringBuilder()
+            engine.sendUserPrompt(buildContextPrompt(query)).collect { token ->
+                result.append(token)
+                val cleaned = cleanAnswer(result.toString())
+                withContext(Dispatchers.Main) {
+                    answer.text = if (cleaned.isBlank()) "Lix está procesando la búsqueda..." else cleaned
+                    scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                }
+            }
+            withContext(Dispatchers.Main) {
+                val final = cleanAnswer(result.toString())
+                if (final.isNotBlank()) {
+                    history.add("LIX" to final)
+                    saveHistory()
+                    if (prefs.getBoolean("tts", false)) tts.speak(final, TextToSpeech.QUEUE_FLUSH, null, "lix")
+                }
+                input.isEnabled = true
+                send.isEnabled = true
+                lastSearchContext = ""
+                scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+            }
+        }
+    }
+
+    private fun fetchSearchResults(query: String): String {
+        return try {
+            val encoded = URLEncoder.encode(query, "UTF-8")
+            val connection = (URL("https://html.duckduckgo.com/html/?q=$encoded").openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 10000
+                readTimeout = 15000
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Android; Lix)")
+                setRequestProperty("Accept-Language", "es-AR,es;q=0.9,en;q=0.6")
+            }
+            connection.inputStream.use { stream ->
+                BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
+                    val html = reader.readText()
+                    val cleaned = html
+                        .replace(Regex("(?is)<script.*?</script>"), " ")
+                        .replace(Regex("(?is)<style.*?</style>"), " ")
+                        .replace(Regex("<[^>]+>"), " ")
+                        .replace("&quot;", """)
+                        .replace("&#x27;", "'")
+                        .replace("&amp;", "&")
+                        .replace(Regex("\s+"), " ")
+                        .trim()
+                    if (cleaned.isBlank()) "No pude obtener resultados de Internet." else cleaned.take(14000)
+                }
+            }
+        } catch (e: Exception) {
+            "No pude acceder a Internet ahora: " + (e.message ?: "error de conexión")
+        }
     }
 
     private fun setupSpeech() {
