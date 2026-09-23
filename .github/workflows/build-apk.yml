@@ -25,13 +25,15 @@ jobs:
           packages: 'platforms;android-36 build-tools;36.0.0 ndk;29.0.13113456 cmake;3.31.6'
 
 
+      - name: Get llama.cpp
+        run: git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
+
       - name: Prepare llama.cpp source tree
         run: |
           rm -rf build-app
           cp -a llama.cpp/examples/llama.android/. build-app/
-          cp -a examples/llama.android/. build-app/
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          sed -i 's#../../../../../../#../../../../../../llama.cpp#' build-app/lib/src/main/cpp/CMakeLists.txt
+          sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC \${CMAKE_CURRENT_LIST_DIR}/../../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
           sed -i 's/namespace = "com.example.llama"/namespace = "com.example.llama"/' build-app/app/build.gradle.kts
           mkdir -p build-app/app/src/main/assets/models
