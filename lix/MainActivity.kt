@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity() {
         val menu = TextView(this).apply {
             text = "☰"
             textSize = 28f
-            setTextColor(text)
+            setTextColor(this@MainActivity.text)
             gravity = Gravity.CENTER
         }
         top.addView(menu, LinearLayout.LayoutParams(dp(42), dp(48)))
@@ -168,7 +168,7 @@ class MainActivity : AppCompatActivity() {
             val b = TextView(this).apply {
                 text = action
                 textSize = 10f
-                setTextColor(text)
+                setTextColor(this@MainActivity.text)
                 gravity = Gravity.CENTER
                 setPadding(dp(12), dp(9), dp(12), dp(9))
                 background = rounded(panel2, 12, Color.rgb(24, 70, 105))
@@ -191,7 +191,7 @@ class MainActivity : AppCompatActivity() {
             text = "⌕"
             textSize = 25f
             gravity = Gravity.CENTER
-            setTextColor(text)
+            setTextColor(this@MainActivity.text)
             background = rounded(panel, 14, Color.rgb(31, 63, 91))
         }
         inputRow.addView(attach, LinearLayout.LayoutParams(dp(48), dp(52)).apply {
@@ -202,7 +202,7 @@ class MainActivity : AppCompatActivity() {
             hint = "Escribí tu mensaje..."
             textSize = 14f
             setHintTextColor(Color.rgb(110, 130, 150))
-            setTextColor(text)
+            setTextColor(this@MainActivity.text)
             setSingleLine(false)
             maxLines = 3
             setPadding(dp(14), 0, dp(12), 0)
@@ -215,7 +215,7 @@ class MainActivity : AppCompatActivity() {
             text = "♩"
             textSize = 22f
             gravity = Gravity.CENTER
-            setTextColor(text)
+            setTextColor(this@MainActivity.text)
             background = rounded(panel, 14, Color.rgb(31, 63, 91))
         }
         inputRow.addView(voice, LinearLayout.LayoutParams(dp(48), dp(52)).apply {
@@ -321,7 +321,7 @@ class MainActivity : AppCompatActivity() {
         val answer = TextView(this).apply {
             text = "Lix está pensando..."
             textSize = 15f
-            setTextColor(text)
+            setTextColor(this@MainActivity.text)
             setPadding(dp(16), dp(14), dp(16), dp(14))
             background = rounded(panel2, 14, Color.rgb(24, 55, 82))
         }
@@ -355,7 +355,7 @@ class MainActivity : AppCompatActivity() {
         val bubble = TextView(this).apply {
             this.text = "$author\n$message"
             textSize = 15f
-            setTextColor(text)
+            setTextColor(this@MainActivity.text)
             setPadding(dp(16), dp(14), dp(16), dp(14))
             background = rounded(if (author == "VOS") Color.rgb(8, 55, 94) else panel, 14,
                 if (author == "VOS") Color.rgb(24, 115, 180) else Color.rgb(24, 50, 74))
