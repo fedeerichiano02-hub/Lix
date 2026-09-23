@@ -24,8 +24,6 @@ jobs:
         with:
           packages: 'platforms;android-36 build-tools;36.0.0 ndk;29.0.13113456 cmake;3.31.6'
 
-      - name: Get llama.cpp
-        run: git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
 
       - name: Prepare llama.cpp source tree
         run: |
