@@ -143,7 +143,7 @@ class MainActivity : AppCompatActivity() {
         addMessage("VOS", text)
 
         val answer = TextView(this).apply {
-            text = "Lix está pensando..."
+            this.text = "Lix está pensando..."
             textSize = 16f
             setTextColor(Color.WHITE)
             setPadding(18, 14, 18, 14)
