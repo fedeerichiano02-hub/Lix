@@ -135,7 +135,7 @@ class MainActivity : AppCompatActivity() {
             val b = TextView(this).apply {
                 text = name
                 textSize = 11f
-                setTextColor(if (index == 0) Color.WHITE else text)
+                setTextColor(if (index == 0) Color.WHITE else this@MainActivity.text)
                 gravity = Gravity.CENTER
                 setPadding(dp(14), dp(10), dp(14), dp(10))
                 background = rounded(if (index == 0) Color.rgb(16, 48, 78) else panel, 12,
