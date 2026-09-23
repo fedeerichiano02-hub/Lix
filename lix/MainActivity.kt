@@ -185,7 +185,7 @@ class MainActivity : AppCompatActivity() {
             tools.addView(chip, LinearLayout.LayoutParams(dp(132), dp(50)).apply {
                 marginEnd = dp(8)
             })
-        })
+        }
 
         toolsScroll.addView(tools)
         root.addView(toolsScroll, LinearLayout.LayoutParams(-1, dp(63)))
@@ -235,7 +235,7 @@ class MainActivity : AppCompatActivity() {
             quick.addView(chip, LinearLayout.LayoutParams(dp(176), dp(45)).apply {
                 marginEnd = dp(8)
             })
-        })
+        }
 
         quickScroll.addView(quick)
         root.addView(quickScroll, LinearLayout.LayoutParams(-1, dp(53)))
