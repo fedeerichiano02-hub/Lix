@@ -40,11 +40,10 @@ jobs:
 
       - name: Download Qwen3
         run: |
-          curl -L --fail --retry 5             -o build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf             'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf?download=true'
-          ls -lh build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
+          curl -L --fail --retry 5             -o app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf             'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf?download=true'
+          ls -lh app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
 
       - name: Build
-        working-directory: build-app
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
@@ -53,5 +52,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Lix-APK
-          path: build-app/app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
