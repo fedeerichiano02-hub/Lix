@@ -674,7 +674,7 @@ class MainActivity : AppCompatActivity() {
                     textSize = 12f
                     setTextColor(Color.WHITE)
                     setHintTextColor(Color.rgb(135, 151, 188))
-                    singleLine = true
+                    setSingleLine(true)
                     setPadding(dp(15), 0, dp(12), 0)
                     background = gradientCard(GradientDrawable.Orientation.TL_BR, Color.argb(160, 19, 25, 65), Color.argb(170, 40, 14, 65), 20, Color.argb(150, 94, 110, 235))
                 }
