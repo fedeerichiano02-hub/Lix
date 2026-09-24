@@ -54,6 +54,14 @@ jobs:
           cp "$APK" build-app/dist/Lix.apk
           ls -lh build-app/dist/Lix.apk
 
+      - name: Verify final APK size and integrity
+        run: |
+          test -f build-app/dist/Lix.apk
+          echo "Final Lix APK size:"
+          ls -lh build-app/dist/Lix.apk
+          echo "Final Lix APK SHA-256:"
+          sha256sum build-app/dist/Lix.apk
+
       - name: Upload complete APK
         uses: actions/upload-artifact@v4
         with:
