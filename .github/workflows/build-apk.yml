@@ -60,6 +60,7 @@ jobs:
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
           sed -i '/minSdk = 33/a\        ndk { abiFilters += listOf("armeabi-v7a") }' build-app/app/build.gradle.kts
           sed -i '/abiFilters += listOf/c\             abiFilters += listOf("armeabi-v7a")' build-app/lib/build.gradle.kts
+          sed -i 's/-DGGML_CPU_ALL_VARIANTS=ON/-DGGML_CPU_ALL_VARIANTS=OFF/' build-app/lib/build.gradle.kts
           python3 lix/patch_android_abi.py
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
           cp lix/AndroidManifest.xml build-app/app/src/main/AndroidManifest.xml
