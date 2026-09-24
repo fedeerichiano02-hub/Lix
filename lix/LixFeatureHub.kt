@@ -57,7 +57,7 @@ object LixFeatureHub {
                             type = "image/*"
                             addCategory(Intent.CATEGORY_OPENABLE)
                         })
-                        else -> Unit
+                        else -> LixMegaModules.handle(context, name)
                     }
                 }
             }
