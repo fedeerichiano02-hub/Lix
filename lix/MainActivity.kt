@@ -116,7 +116,7 @@ class MainActivity : AppCompatActivity() {
         })
         buildUi()
         setupSpeech()
-        wakeServiceEnabled = prefs.getBoolean("wake_enabled", true)
+        wakeServiceEnabled = prefs.getBoolean("wake_enabled", false)
         if (wakeServiceEnabled) requestVoiceCapabilityIfNeeded()
         lifecycleScope.launch(Dispatchers.IO) {
             engine = AiChat.getInferenceEngine(applicationContext)
@@ -798,7 +798,8 @@ class MainActivity : AppCompatActivity() {
                     "Asistente del sistema" to "Configurar Lix como asistente de Android." to "◎",
                     "Privacidad" to "Datos y almacenamiento local." to "♙",
                     "Notificaciones" to "Alertas y finalización de tareas." to "♧",
-                    "Actualizaciones" to "Versión, estado y comprobación." to "☁"
+                    "Actualizaciones" to "Versión, estado y comprobación." to "☁",
+                    "Evolución y mejoras" to "Buscar e instalar mejoras modulares de Lix." to "🧬"
                 )
                 items.forEach { item ->
                     val card = screenCard(item.first.first, item.first.second, item.second)
@@ -812,6 +813,7 @@ class MainActivity : AppCompatActivity() {
                             }
                             "Proyecto Godot" -> LixAutomation.handle(this, "elegir proyecto Godot")
                             "Asistente del sistema" -> openAssistantRoleSettings()
+                            "Evolución y mejoras" -> showEvolution()
                             "Permisos de Lix" -> startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.parse("package:$packageName") })
                         }
                     }
@@ -841,6 +843,55 @@ class MainActivity : AppCompatActivity() {
                 startVoice()
             }
         }
+    }
+
+    private fun showEvolution() {
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(2), dp(8), dp(2), 0)
+        }
+        val status = TextView(this).apply {
+            text = "Buscando mejoras disponibles..."
+            textSize = 10f
+            setTextColor(Color.rgb(150, 180, 220))
+            setPadding(dp(8), dp(2), dp(8), dp(12))
+        }
+        body.addView(status)
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(list)
+
+        fun render(items: List<LixEvolution.Improvement>) {
+            list.removeAllViews()
+            status.text = if (items.isEmpty()) "No hay mejoras disponibles." else "Mejoras disponibles"
+            items.forEach { item ->
+                val installed = LixEvolution.installedVersion(this, item.id)
+                val card = screenCard(item.title, item.description + "  •  v" + item.version, "✦")
+                card.setOnClickListener {
+                    if (LixEvolution.installImprovement(this, item)) {
+                        toast(item.title + " activada.")
+                        card.alpha = 0.65f
+                    }
+                }
+                if (installed >= item.version) card.alpha = 0.55f
+                list.addView(card, LinearLayout.LayoutParams(-1, dp(70)).apply { bottomMargin = dp(8) })
+            }
+        }
+
+        render(LixEvolution.catalog(this))
+        val refresh = glowButton("↻  BUSCAR MEJORAS", 46)
+        refresh.setOnClickListener {
+            refresh.isEnabled = false
+            lifecycleScope.launch(Dispatchers.IO) {
+                val result = try { LixEvolution.refresh(this@MainActivity) } catch (_: Exception) { emptyList() }
+                withContext(Dispatchers.Main) {
+                    refresh.isEnabled = true
+                    if (result.isEmpty()) toast("No se pudo consultar el catálogo ahora.")
+                    render(if (result.isEmpty()) LixEvolution.catalog(this@MainActivity) else result)
+                }
+            }
+        }
+        body.addView(refresh, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(4) })
+        screenDialog("Evolución", "MEJORAS DE LIX", body)
     }
 
     private fun openMenu() {
