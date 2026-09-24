@@ -40,8 +40,8 @@ jobs:
           cp lix/LixVoiceInteractionService.kt build-app/app/src/main/java/com/example/llama/LixVoiceInteractionService.kt
           cp lix/LixVoiceSessionService.kt build-app/app/src/main/java/com/example/llama/LixVoiceSessionService.kt
           cp lix/LixProjectManager.kt build-app/app/src/main/java/com/example/llama/LixProjectManager.kt
-        cp lix/LixEvolution.kt build-app/app/src/main/java/com/example/llama/LixEvolution.kt
-        cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
+          cp lix/LixEvolution.kt build-app/app/src/main/java/com/example/llama/LixEvolution.kt
+          cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
           mkdir -p build-app/app/src/main/res/xml
           cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/accessibility_service_config.xml
           cp lix/voice_interaction_service.xml build-app/app/src/main/res/xml/voice_interaction_service.xml
