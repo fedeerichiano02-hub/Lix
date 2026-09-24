@@ -321,19 +321,11 @@ class MainActivity : AppCompatActivity() {
     private suspend fun prepareModel() {
         val model = File(filesDir, "models/lix-qwen3-1.7b-q4_k_m.gguf")
 
-        withContext(Dispatchers.Main) {
-            status.text = "Modelo: Qwen3 1.7B (Local)  •  PREPARANDO..."
-        }
-
         if (!model.exists()) {
             model.parentFile?.mkdirs()
             assets.open("models/lix-qwen3-1.7b-q4_k_m.gguf").use { source ->
                 FileOutputStream(model).use { target -> source.copyTo(target) }
             }
-        }
-
-        withContext(Dispatchers.Main) {
-            status.text = "Modelo: Qwen3 1.7B (Local)  •  CARGANDO..."
         }
 
         engine.loadModel(model.absolutePath)
@@ -350,7 +342,6 @@ class MainActivity : AppCompatActivity() {
 
         withContext(Dispatchers.Main) {
             ready = true
-            status.text = "Modelo: Qwen3 1.7B (Local)  •  ONLINE"
             input.isEnabled = true
             send.isEnabled = true
             addMessage(
