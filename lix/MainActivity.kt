@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private var generation: Job? = null
     private var ready = false
     private var internetMode = false
+    private var autoWebBusy = false
     private var lastSearchContext = ""
     private var lastUiUpdate = 0L
     private var selectedFileText: String? = null
@@ -396,6 +397,8 @@ class MainActivity : AppCompatActivity() {
             "Sé claro, útil y directo. No inventes datos. " +
             "Tu prioridad es ayudar con conversación, programación, proyectos, " +
             "archivos, aprendizaje, memoria y herramientas cuando estén disponibles. " +
+            "La aplicación puede consultar Internet automáticamente cuando una pregunta requiere información actual o verificación; " +
+            "usá los resultados entregados como fuente y no inventes datos que no estén respaldados. Respondé rápido y de forma directa. " +
             "No muestres etiquetas de razonamiento como <think> o </think> en tu respuesta final."
         )
 
@@ -449,7 +452,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (internetMode) {
+        if (internetMode || shouldSearchWebAutomatically(prompt)) {
             input.setText("")
             input.isEnabled = false
             send.isEnabled = false
@@ -489,6 +492,7 @@ class MainActivity : AppCompatActivity() {
                         if (final.isNotBlank()) {
                             history.add("LIX" to final)
                             saveHistory()
+                            learnFromConversation(prompt, final)
                             if (prefs.getBoolean("tts", false)) tts.speak(final, TextToSpeech.QUEUE_FLUSH, null, "lix")
                         }
                         input.isEnabled = true
@@ -531,10 +535,46 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    private fun shouldSearchWebAutomatically(prompt: String): Boolean {
+        val q = prompt.trim().lowercase(Locale("es", "AR"))
+        if (q.length < 4) return false
+        val localOnly = listOf("recordá esto", "que recordas", "qué recordás", "mi historial", "mi memoria")
+        if (localOnly.any { q.startsWith(it) }) return false
+        val webSignals = listOf(
+            "hoy", "ahora", "actual", "actualmente", "último", "última", "últimos", "últimas",
+            "reciente", "recientemente", "noticias", "precio", "precios", "cuánto vale", "cotización",
+            "clima", "tiempo", "horario", "abierto", "cerrado", "resultados", "partido", "elecciones",
+            "quién es", "quién fue", "cuándo sale", "cuándo es", "fecha de", "versión actual",
+            "buscar", "buscá", "investigá", "verificá", "comprobá", "en internet", "en github",
+            "fuente", "fuentes", "link", "enlace"
+        )
+        if (webSignals.any { q.contains(it) }) return true
+        val question = q.startsWith("qué ") || q.startsWith("que ") ||
+            q.startsWith("cómo ") || q.startsWith("como ") ||
+            q.startsWith("por qué ") || q.startsWith("porque ") ||
+            q.startsWith("dónde ") || q.startsWith("donde ") ||
+            q.startsWith("cuándo ") || q.startsWith("cuando ") ||
+            q.startsWith("cuánto ") || q.startsWith("cuanto ") ||
+            q.startsWith("quién ") || q.startsWith("quien ")
+        val knowledgeTerms = listOf("es cierto", "es verdad", "existe", "funciona", "significa", "sirve para")
+        return question && knowledgeTerms.any { q.contains(it) }
+    }
+
+    private fun learnFromConversation(user: String, assistant: String) {
+        val u = user.trim()
+        if (u.isBlank()) return
+        val lower = u.lowercase(Locale("es", "AR"))
+        val signals = listOf("quiero", "prefiero", "me gusta", "no me gusta", "no quiero", "siempre", "nunca", "acordate", "recordá", "llamame", "llámame")
+        if (!signals.any { lower.contains(it) }) return
+        val old = prefs.getString("learning", "") ?: ""
+        val lesson = "• Usuario: " + u.take(500) + "\n• Respuesta: " + assistant.take(700)
+        prefs.edit().putString("learning", (old + "\n" + lesson).trim().takeLast(12000)).apply()
+    }
+
     private fun toolAction(index: Int) {
         when (index) {
             0 -> { internetMode = false; toast("Chat local activo") }
-            1 -> { internetMode = true; input.hint = "¿Qué querés buscar?"; input.requestFocus(); toast("Modo Internet activo") }
+            1 -> { internetMode = true; input.hint = "¿Qué querés buscar?"; input.requestFocus(); toast("Internet automático activo") }
             2, 3 -> pickFile()
             4 -> { input.setText("Ayudame a programar: "); input.setSelection(input.text.length); input.requestFocus() }
             5 -> startVoice()
@@ -617,7 +657,13 @@ class MainActivity : AppCompatActivity() {
             val memory = prefs.getString("memory", "")?.trim().orEmpty()
             if (memory.isNotBlank()) {
                 append("MEMORIA DEL USUARIO:\n")
-                append(memory.take(6000))
+                append(memory.take(3500))
+                append("\n\n")
+            }
+            val learning = prefs.getString("learning", "")?.trim().orEmpty()
+            if (learning.isNotBlank()) {
+                append("APRENDIZAJES DE INTERACCIÓN:\n")
+                append(learning.takeLast(3500))
                 append("\n\n")
             }
             val recent = history.takeLast(8)
@@ -667,12 +713,17 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
             val result = StringBuilder()
+            var lastUpdate = 0L
             engine.sendUserPrompt(buildContextPrompt(query)).collect { token ->
                 result.append(token)
-                val cleaned = cleanAnswer(result.toString())
-                withContext(Dispatchers.Main) {
-                    answer.text = if (cleaned.isBlank()) "Lix está procesando la búsqueda..." else cleaned
-                    scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                val now = System.currentTimeMillis()
+                if (now - lastUpdate >= 70L) {
+                    lastUpdate = now
+                    val cleaned = cleanAnswer(result.toString())
+                    withContext(Dispatchers.Main) {
+                        answer.text = if (cleaned.isBlank()) "Lix está procesando la búsqueda..." else cleaned
+                        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                    }
                 }
             }
             withContext(Dispatchers.Main) {
@@ -680,6 +731,7 @@ class MainActivity : AppCompatActivity() {
                 if (final.isNotBlank()) {
                     history.add("LIX" to final)
                     saveHistory()
+                    learnFromConversation(query, final)
                     if (prefs.getBoolean("tts", false)) tts.speak(final, TextToSpeech.QUEUE_FLUSH, null, "lix")
                 }
                 input.isEnabled = true
@@ -695,14 +747,14 @@ class MainActivity : AppCompatActivity() {
             val encoded = URLEncoder.encode(query, "UTF-8")
             val connection = (URL("https://html.duckduckgo.com/html/?q=$encoded").openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
-                connectTimeout = 10000
-                readTimeout = 15000
+                connectTimeout = 5000
+                readTimeout = 8000
                 setRequestProperty("User-Agent", "Mozilla/5.0 (Android; Lix)")
                 setRequestProperty("Accept-Language", "es-AR,es;q=0.9,en;q=0.6")
             }
             connection.inputStream.use { stream ->
                 BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
-                    val html = reader.readText()
+                    val html = reader.readText().take(90000)
                     val cleaned = html
                         .replace(Regex("(?is)<script.*?</script>"), " ")
                         .replace(Regex("(?is)<style.*?</style>"), " ")
