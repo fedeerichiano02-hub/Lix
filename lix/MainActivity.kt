@@ -869,6 +869,17 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    private fun premiumPanel(title: String, subtitle: String, content: String, actionText: String = "Cerrar", action: (() -> Unit)? = null) {
+        val dialog = Dialog(this)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(22), dp(20), dp(22), dp(20)); background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(4,7,20), Color.rgb(20,7,38))).apply { cornerRadius = dp(26).toFloat(); setStroke(dp(1), Color.argb(150,91,133,221)) } }
+        root.addView(TextView(this).apply { text=title; textSize=25f; setTextColor(Color.rgb(244,248,255)); setTypeface(typeface, android.graphics.Typeface.BOLD) })
+        root.addView(TextView(this).apply { text=subtitle; textSize=11f; setTextColor(Color.rgb(70,222,255)); setPadding(0,dp(4),0,dp(18)) })
+        root.addView(TextView(this).apply { text=content; textSize=14f; setTextColor(Color.rgb(205,216,235)); setPadding(0,0,0,dp(18)) })
+        val b=TextView(this).apply { text=actionText; textSize=13f; gravity=Gravity.CENTER; setTextColor(Color.WHITE); background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(72,112,255),Color.rgb(174,82,255))).apply { cornerRadius=dp(18).toFloat() }; setOnClickListener { action?.invoke(); dialog.dismiss() } }
+        root.addView(b,LinearLayout.LayoutParams(-1,dp(50)))
+        dialog.setContentView(root); dialog.setCanceledOnTouchOutside(true); dialog.show(); dialog.window?.setLayout((resources.displayMetrics.widthPixels*0.90).toInt(),-2)
+    }
     private fun startVoice() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 2001)
@@ -889,11 +900,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showMemory() {
         val mem = prefs.getString("memory", "") ?: ""
-        AlertDialog.Builder(this).setTitle("Memoria de Lix")
-            .setMessage(if (mem.isBlank()) "No hay recuerdos guardados." else mem)
-            .setPositiveButton("Cerrar", null)
-            .setNeutralButton("Borrar memoria") { _, _ -> prefs.edit().remove("memory").apply(); toast("Memoria borrada") }
-            .show()
+        premiumPanel("Memoria", "TU MEMORIA PERSONAL", if (mem.isBlank()) "Todavía no hay recuerdos guardados." else mem.take(5000))
     }
 
     private fun remember(text: String) {
@@ -902,16 +909,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openSettings() {
-        val items = arrayOf("Nombre: $profileName", "Leer respuestas en voz alta", "Borrar historial", "Borrar memoria", "Información del modelo")
-        AlertDialog.Builder(this).setTitle("Ajustes").setItems(items) { _, which ->
-            when (which) {
-                0 -> editName()
-                1 -> prefs.edit().putBoolean("tts", !prefs.getBoolean("tts", false)).apply().also { toast("Lectura por voz actualizada") }
-                2 -> { history.clear(); saveHistory(); chat.removeAllViews(); toast("Historial borrado") }
-                3 -> { prefs.edit().remove("memory").apply(); toast("Memoria borrada") }
-                4 -> toast("Qwen3 1.7B Q4_K_M • local • sin nube")
-            }
-        }.show()
+        val voiceState = if (prefs.getBoolean("tts", false)) "activada" else "desactivada"
+        premiumPanel("Configuración", "PERSONALIZÁ LIX", "Perfil: $profileName\n\nVoz: $voiceState\n\nModelo: Qwen3 1.7B Q4_K_M\nLocal en el dispositivo\n\nPrivacidad: recuerdos e historial se guardan en el teléfono.")
     }
 
     private fun editName() {
@@ -925,16 +924,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openProfile() {
-        AlertDialog.Builder(this).setTitle("Perfil")
-            .setMessage("Usuario: $profileName\n\nLix funciona localmente con Qwen3 1.7B.\nTus recuerdos e historial se guardan en el teléfono.")
-            .setPositiveButton("Cerrar", null).show()
+        premiumPanel("Tu perfil", "PERSONALIZACIÓN", "Usuario: $profileName\n\nLix está configurado para hablarte como compa y conservar tus preferencias y recuerdos en el dispositivo.")
     }
 
     private fun showHistory() {
         val lines = history.takeLast(20).joinToString("\n\n") { "${it.first}: ${it.second.take(180)}" }
-        AlertDialog.Builder(this).setTitle("Historial")
-            .setMessage(if (lines.isBlank()) "Todavía no hay conversaciones." else lines)
-            .setPositiveButton("Cerrar", null).show()
+        premiumPanel("Historial", "CONVERSACIONES RECIENTES", if (lines.isBlank()) "Todavía no hay conversaciones." else lines)
     }
 
     private fun saveHistory() {
