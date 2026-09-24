@@ -31,9 +31,36 @@ jobs:
           python3 lix/apply_glass_ui.py
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
-          sed -i '/<application/i\    <uses-permission android:name="android.permission.RECORD_AUDIO" />' build-app/app/src/main/AndroidManifest.xml
-          sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET" />' build-app/app/src/main/AndroidManifest.xml
-          sed -i 's#<application#<application android:icon="@drawable/lix_icon" android:roundIcon="@drawable/lix_icon"#' build-app/app/src/main/AndroidManifest.xml
+          cat > build-app/app/src/main/AndroidManifest.xml <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:extractNativeLibs="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@drawable/lix_icon"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/lix_icon"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AiChatSample">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
+EOF
           mkdir -p build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           sudo apt-get update
           sudo apt-get install -y imagemagick
