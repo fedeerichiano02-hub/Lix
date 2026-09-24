@@ -47,18 +47,16 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-      - name: Split APK for reliable download
+      - name: Prepare APK artifact
         run: |
           mkdir -p build-app/dist
           APK=$(find build-app/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)
           cp "$APK" build-app/dist/Lix.apk
-          split -b 450M -d -a 2 build-app/dist/Lix.apk build-app/dist/Lix.apk.part-
-          rm build-app/dist/Lix.apk
-          ls -lh build-app/dist
+          ls -lh build-app/dist/Lix.apk
 
-      - name: Upload APK parts
+      - name: Upload complete APK
         uses: actions/upload-artifact@v4
         with:
           name: Lix-APK-Build-${{ github.run_number }}
-          path: build-app/dist/Lix.apk.part-*
+          path: build-app/dist/Lix.apk
           if-no-files-found: error
