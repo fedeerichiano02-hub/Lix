@@ -198,7 +198,7 @@ class MainActivity : AppCompatActivity() {
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(18), 0, dp(14), 0)
-                background = gradientCard(GradientDrawable.Orientation.LT_BR,
+                background = gradientCard(GradientDrawable.Orientation.TL_BR,
                     if (i == 3) Color.argb(190, 36, 55, 120) else Color.argb(165, 19, 28, 65),
                     if (i == 3) Color.argb(205, 78, 74, 177) else Color.argb(150, 31, 49, 104),
                     22, Color.argb(150, 85, 129, 245))
@@ -564,6 +564,193 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+    private inner class LogoView(context: android.content.Context, private val logoSize: Int) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        override fun onDraw(canvas: Canvas) {
+            val w = width.toFloat()
+            val h = height.toFloat()
+            paint.style = Paint.Style.FILL
+            paint.textSize = dp(logoSize).toFloat()
+            paint.typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+            paint.shader = LinearGradient(0f, 0f, w, h, Color.WHITE, Color.rgb(70, 210, 255), Shader.TileMode.CLAMP)
+            paint.setShadowLayer(dp(12).toFloat(), 0f, 0f, Color.rgb(75, 90, 255))
+            canvas.drawText("Lix", dp(8).toFloat(), h * .70f, paint)
+            paint.shader = null
+            paint.clearShadowLayer()
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(4).toFloat()
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.color = Color.rgb(47, 221, 255)
+            val r = RectF(dp(4).toFloat(), h*.16f, w-dp(5).toFloat(), h*.90f)
+            canvas.drawArc(r, 205f, 165f, false, paint)
+            paint.color = Color.rgb(181, 62, 255)
+            canvas.drawArc(r, 20f, 125f, false, paint)
+            paint.style = Paint.Style.FILL
+            paint.color = Color.WHITE
+            canvas.drawCircle(w*.48f, h*.29f, dp(4).toFloat(), paint)
+        }
+    }
+
+    private inner class OrbView(context: android.content.Context, private val size: Int) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        override fun onDraw(canvas: Canvas) {
+            val cx = width/2f
+            val cy = height/2f
+            paint.shader = RadialGradient(cx, cy, dp(size/2).toFloat(),
+                intArrayOf(Color.WHITE, Color.rgb(76, 142, 255), Color.rgb(181, 62, 255), Color.TRANSPARENT),
+                floatArrayOf(0f, .25f, .72f, 1f), Shader.TileMode.CLAMP)
+            canvas.drawCircle(cx, cy, dp(size/2).toFloat(), paint)
+            paint.shader = null
+            paint.color = Color.WHITE
+            canvas.drawCircle(cx, cy, dp(6).toFloat(), paint)
+        }
+    }
+
+    private fun pill(textValue: String, selected: Boolean): TextView = TextView(this).apply {
+        text = textValue
+        textSize = 9f
+        gravity = Gravity.CENTER
+        setTextColor(Color.WHITE)
+        background = gradientCard(GradientDrawable.Orientation.TL_BR,
+            if (selected) Color.rgb(76, 99, 255) else Color.argb(100, 14, 22, 52),
+            if (selected) Color.rgb(175, 60, 244) else Color.argb(120, 30, 12, 56),
+            18, Color.argb(130, 88, 125, 236))
+        setPadding(dp(10), 0, dp(10), 0)
+    }
+
+    private fun screenCard(title: String, description: String, icon: String): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(9), dp(8), dp(9), dp(8))
+        background = gradientCard(GradientDrawable.Orientation.TL_BR,
+            Color.argb(150, 18, 29, 70), Color.argb(155, 47, 15, 70), 18, Color.argb(105, 82, 113, 220))
+        addView(TextView(this@MainActivity).apply {
+            text = icon; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.rgb(83, 218, 255))
+        }, LinearLayout.LayoutParams(dp(46), dp(56)))
+        val texts = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
+        texts.addView(TextView(this@MainActivity).apply { text = title; textSize = 12f; setTextColor(Color.WHITE) })
+        texts.addView(TextView(this@MainActivity).apply { text = description; textSize = 9f; setTextColor(Color.rgb(164, 180, 216)); setPadding(0, dp(3), 0, 0) })
+        addView(texts, LinearLayout.LayoutParams(0, dp(56), 1f))
+        addView(TextView(this@MainActivity).apply { text = "›"; textSize = 22f; setTextColor(Color.rgb(180, 193, 225)); gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(24), dp(56)))
+    }
+
+    private fun screenDialog(title: String, subtitle: String, body: LinearLayout): Dialog {
+        val dialog = Dialog(this)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(16))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(3, 7, 23), Color.rgb(12, 8, 38), Color.rgb(26, 5, 40))).apply {
+                cornerRadius = dp(28).toFloat()
+                setStroke(dp(1), Color.argb(170, 79, 108, 225))
+            }
+        }
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val back = TextView(this).apply { text = "‹"; textSize = 34f; gravity = Gravity.CENTER; setTextColor(Color.WHITE); setOnClickListener { dialog.dismiss() } }
+        header.addView(back, LinearLayout.LayoutParams(dp(38), dp(48)))
+        header.addView(LogoView(this, 27), LinearLayout.LayoutParams(dp(78), dp(48)))
+        val titles = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        titles.addView(TextView(this@MainActivity).apply { text = title; textSize = 18f; setTextColor(Color.WHITE); setTypeface(typeface, android.graphics.Typeface.BOLD) })
+        titles.addView(TextView(this@MainActivity).apply { text = subtitle; textSize = 8.5f; setTextColor(Color.rgb(120, 218, 255)) })
+        header.addView(titles, LinearLayout.LayoutParams(0, dp(48), 1f))
+        header.addView(TextView(this).apply { text = "⋮"; textSize = 24f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(dp(30), dp(48)))
+        root.addView(header)
+        root.addView(body, LinearLayout.LayoutParams(-1, 0, 1f))
+        dialog.setContentView(root)
+        dialog.setCanceledOnTouchOutside(true)
+        dialog.show()
+        dialog.window?.setLayout((resources.displayMetrics.widthPixels * .96f).toInt(), -1)
+        return dialog
+    }
+
+    private fun showReferenceScreen(which: String) {
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(2), dp(8), dp(2), 0) }
+        when (which) {
+            "internet" -> {
+                val search = EditText(this).apply {
+                    hint = "Buscar en Internet..."
+                    textSize = 12f
+                    setTextColor(Color.WHITE)
+                    setHintTextColor(Color.rgb(135, 151, 188))
+                    singleLine = true
+                    setPadding(dp(15), 0, dp(12), 0)
+                    background = gradientCard(GradientDrawable.Orientation.TL_BR, Color.argb(160, 19, 25, 65), Color.argb(170, 40, 14, 65), 20, Color.argb(150, 94, 110, 235))
+                }
+                body.addView(search, LinearLayout.LayoutParams(-1, dp(48)))
+                val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(10), 0, dp(10)) }
+                arrayOf("Todo", "Noticias", "Imágenes", "Videos").forEachIndexed { i, value -> tabs.addView(pill(value, i == 0), LinearLayout.LayoutParams(0, dp(32), 1f).apply { marginEnd = dp(4) }) }
+                body.addView(tabs)
+                body.addView(TextView(this).apply { text = "Resultados"; textSize = 16f; setTextColor(Color.WHITE); setTypeface(typeface, android.graphics.Typeface.BOLD); setPadding(dp(4), dp(5), 0, dp(9)) })
+                body.addView(screenCard("Información actualizada", "Lix encontró información reciente en la web.", "◉"), LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(8) })
+                body.addView(screenCard("Noticias", "Últimas noticias relevantes.", "▣"), LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(8) })
+                body.addView(screenCard("Fuentes confiables", "Resultados de sitios verificados.", "▤"), LinearLayout.LayoutParams(-1, dp(76)))
+                val dialog = screenDialog("Internet", "BUSCAR EN LA WEB", body)
+                search.setOnEditorActionListener { _, _, _ ->
+                    internetMode = true
+                    input.setText(search.text.toString())
+                    dialog.dismiss()
+                    sendMessage()
+                    true
+                }
+            }
+            "files" -> {
+                arrayOf("Recientes", "Documentos", "Imágenes", "Videos").forEachIndexed { i, value ->
+                    if (i == 0) body.addView(LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                    }, LinearLayout.LayoutParams(0, 0))
+                }
+                val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                arrayOf("Recientes", "Documentos", "Imágenes", "Videos").forEachIndexed { i, value -> tabs.addView(pill(value, i == 0), LinearLayout.LayoutParams(0, dp(32), 1f).apply { marginEnd = dp(4) }) }
+                body.addView(tabs)
+                body.addView(TextView(this).apply { text = "Archivos recientes"; textSize = 15f; setTextColor(Color.WHITE); setPadding(dp(4), dp(13), 0, dp(9)) })
+                val names = arrayOf("Notas del proyecto.txt", "Mapa.jpg", "Ideas_Lix.txt", "Referencia.png", "Plan.txt")
+                val times = arrayOf("Hace 2 horas", "Hace 5 horas", "Hace 1 día", "Hace 2 días", "Hace 3 días")
+                for (i in names.indices) body.addView(screenCard(names[i], times[i], "▣"), LinearLayout.LayoutParams(-1, dp(69)).apply { bottomMargin = dp(7) })
+                val open = TextView(this).apply { text = "Abrir archivo del teléfono"; textSize = 11f; gravity = Gravity.CENTER; setTextColor(Color.WHITE); background = gradientCard(GradientDrawable.Orientation.TL_BR, Color.rgb(54, 106, 242), Color.rgb(170, 55, 236), 20, Color.argb(130, 120, 145, 255)); setOnClickListener { pickFile() } }
+                body.addView(open, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(7) })
+                screenDialog("Archivos", "TUS ARCHIVOS", body)
+            }
+            "memory" -> {
+                val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                arrayOf("Todo", "Preferencias", "Proyectos", "Conversaciones").forEachIndexed { i, value -> tabs.addView(pill(value, i == 0), LinearLayout.LayoutParams(0, dp(32), 1f).apply { marginEnd = dp(4) }) }
+                body.addView(tabs)
+                val items = arrayOf("Información sobre vos" to "Datos personales y preferencias." to "♙", "Tus proyectos" to "Ideas, planes y desarrollo." to "◇", "Cosas importantes" to "Recordatorios y notas clave." to "▮", "Aprendizajes" to "Lo que Lix ha aprendido de vos." to "✦", "Conversaciones" to "Historial organizado." to "☁")
+                items.forEach { item -> body.addView(screenCard(item.first.first, item.first.second, item.second), LinearLayout.LayoutParams(-1, dp(71)).apply { bottomMargin = dp(7) }) }
+                val mem = prefs.getString("memory", "").orEmpty()
+                if (mem.isNotBlank()) body.addView(TextView(this).apply { text = mem.take(1000); textSize = 9.5f; setTextColor(Color.rgb(180, 194, 225)); setPadding(dp(10), dp(8), dp(10), dp(8)) })
+                screenDialog("Memoria", "TU MEMORIA PERSONAL", body)
+            }
+            "settings" -> {
+                val items = arrayOf("Tema visual" to "Colores, estilo y apariencia." to "◉", "Voz de Lix" to "Idioma, tono y personalidad." to "≋", "Modelo de IA" to "Opciones y comportamiento." to "▦", "Privacidad" to "Datos y almacenamiento." to "♙", "Notificaciones" to "Alertas y sonidos." to "♧", "Actualizaciones" to "Versión, estado y comprobación." to "☁")
+                items.forEach { item -> body.addView(screenCard(item.first.first, item.first.second, item.second), LinearLayout.LayoutParams(-1, dp(70)).apply { bottomMargin = dp(8) }) }
+                screenDialog("Configuración", "PERSONALIZÁ LIX", body)
+            }
+            "history" -> {
+                history.takeLast(12).reversed().forEach { pair -> body.addView(screenCard(pair.first, pair.second.take(90), "●"), LinearLayout.LayoutParams(-1, dp(70)).apply { bottomMargin = dp(7) }) }
+                if (history.isEmpty()) body.addView(TextView(this).apply { text = "Todavía no hay conversaciones guardadas."; textSize = 12f; setTextColor(Color.rgb(170, 185, 215)); setPadding(dp(12), dp(20), dp(12), dp(20)) })
+                screenDialog("Historial", "CONVERSACIONES RECIENTES", body)
+            }
+            "voice" -> {
+                body.gravity = Gravity.CENTER
+                body.addView(OrbView(this, 180), LinearLayout.LayoutParams(dp(180), dp(180)))
+                body.addView(TextView(this).apply { text = "Escuchando..."; textSize = 19f; setTextColor(Color.WHITE); gravity = Gravity.CENTER; setTypeface(typeface, android.graphics.Typeface.BOLD); setPadding(0, dp(18), 0, dp(2)) }, LinearLayout.LayoutParams(-1, dp(45)))
+                body.addView(TextView(this).apply { text = "Podés hablar ahora"; textSize = 10f; setTextColor(Color.rgb(159,178,218)); gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, dp(30)))
+                val controls = LinearLayout(this).apply { gravity = Gravity.CENTER }
+                controls.addView(glowButton("⌨", 52), LinearLayout.LayoutParams(dp(52), dp(52)).apply { marginEnd = dp(20) })
+                val stop = glowButton("■", 62)
+                stop.background = gradientCard(GradientDrawable.Orientation.TL_BR, Color.rgb(255,78,112), Color.rgb(245,62,135), 28, Color.argb(160,255,145,175))
+                controls.addView(stop, LinearLayout.LayoutParams(dp(62), dp(62)))
+                controls.addView(glowButton("×", 52), LinearLayout.LayoutParams(dp(52), dp(52)).apply { marginStart = dp(20) })
+                body.addView(controls, LinearLayout.LayoutParams(-1, dp(75)).apply { topMargin = dp(24) })
+                val dialog = screenDialog("Voz", "HABLÁ CON LIX", body)
+                stop.setOnClickListener { speech?.stopListening(); dialog.dismiss() }
+                startVoice()
+            }
+        }
+    }
+
     private fun openMenu() {
         val d=Dialog(this)
         d.window?.setBackgroundDrawableResource(android.R.color.transparent)
@@ -582,7 +769,18 @@ class MainActivity : AppCompatActivity() {
         entries.forEachIndexed{idx,(title,icon)->
             val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(13),0,dp(12),0)
                 background=if(idx==0) gradientCard(GradientDrawable.Orientation.TL_BR,Color.rgb(73,70,210),Color.rgb(164,50,229),20,Color.argb(150,117,118,255)) else gradientCard(GradientDrawable.Orientation.TL_BR,Color.argb(100,13,22,53),Color.argb(115,31,12,55),20,Color.argb(80,78,110,206))
-                setOnClickListener{d.dismiss();when(title){"Chat"->{}, "Internet"->showReferenceScreen("internet"), "Memoria"->showReferenceScreen("memory"), "Archivos"->showReferenceScreen("files"), "Proyectos"->{input.setText("Ayudame con mi proyecto: ");input.requestFocus()}, "Voz"->showReferenceScreen("voice"), "Personalización"->showReferenceScreen("settings"), "Configuración"->showReferenceScreen("settings")}}
+                setOnClickListener {
+                    d.dismiss()
+                    when (title) {
+                        "Chat" -> {}
+                        "Internet" -> showReferenceScreen("internet")
+                        "Memoria" -> showReferenceScreen("memory")
+                        "Archivos" -> showReferenceScreen("files")
+                        "Proyectos" -> { input.setText("Ayudame con mi proyecto: "); input.requestFocus() }
+                        "Voz" -> showReferenceScreen("voice")
+                        "Personalización", "Configuración" -> showReferenceScreen("settings")
+                    }
+                }
             }
             row.addView(TextView(this).apply{text=icon;textSize=19f;setTextColor(Color.rgb(88,223,255));gravity=Gravity.CENTER},LinearLayout.LayoutParams(dp(40),dp(52)))
             row.addView(TextView(this).apply{text=title;textSize=12.5f;setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL},LinearLayout.LayoutParams(0,dp(52),1f))
