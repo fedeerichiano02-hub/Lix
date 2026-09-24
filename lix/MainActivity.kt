@@ -368,10 +368,7 @@ class MainActivity : AppCompatActivity() {
             ready = true
             input.isEnabled = true
             send.isEnabled = true
-            addMessage(
-                "LIX",
-                "Hola, compa.\nSoy Lix, tu asistente inteligente.\nEstoy acá para ayudarte con lo que necesites."
-            )
+            // La pantalla principal ya tiene su saludo visual; no agregamos una burbuja histórica al cargar.
         }
     }
 
@@ -582,13 +579,17 @@ class MainActivity : AppCompatActivity() {
             paint.strokeWidth = dp(4).toFloat()
             paint.strokeCap = Paint.Cap.ROUND
             paint.color = Color.rgb(47, 221, 255)
-            val r = RectF(dp(4).toFloat(), h*.16f, w-dp(5).toFloat(), h*.90f)
-            canvas.drawArc(r, 205f, 165f, false, paint)
-            paint.color = Color.rgb(181, 62, 255)
-            canvas.drawArc(r, 20f, 125f, false, paint)
-            paint.style = Paint.Style.FILL
-            paint.color = Color.WHITE
-            canvas.drawCircle(w*.48f, h*.29f, dp(4).toFloat(), paint)
+            if (logoSize >= 80) {
+                val r = RectF(dp(20).toFloat(), h*.20f, w-dp(20).toFloat(), h*.82f)
+                paint.strokeWidth = dp(5).toFloat()
+                paint.color = Color.rgb(47, 221, 255)
+                canvas.drawArc(r, 205f, 165f, false, paint)
+                paint.color = Color.rgb(181, 62, 255)
+                canvas.drawArc(r, 20f, 125f, false, paint)
+                paint.style = Paint.Style.FILL
+                paint.color = Color.WHITE
+                canvas.drawCircle(w*.48f, h*.29f, dp(4).toFloat(), paint)
+            }
         }
     }
 
