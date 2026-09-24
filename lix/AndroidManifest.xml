@@ -10,7 +10,7 @@
         android:extractNativeLibs="true"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/lix_icon"
-        android:label="@string/app_name"
+        android:label="Lix"
         android:roundIcon="@drawable/lix_icon"
         android:supportsRtl="true"
         android:theme="@style/Theme.AiChatSample">
