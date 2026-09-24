@@ -6,9 +6,6 @@ import android.service.voice.VoiceInteractionService
 class LixVoiceInteractionService : VoiceInteractionService() {
     override fun onReady() {
         super.onReady()
-        if (android.os.Build.VERSION.SDK_INT >= 36) {
-            try { setInvocationEffectEnabled(true) } catch (_: Exception) {}
-        }
     }
 
     override fun onLaunchVoiceAssistFromKeyguard() {
