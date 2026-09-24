@@ -33,6 +33,7 @@ jobs:
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
           cp lix/AndroidManifest.xml build-app/app/src/main/AndroidManifest.xml
+          sed -i '/defaultConfig {/a\        versionCode = 37\n        versionName = "2.0.37"' build-app/app/build.gradle.kts
           mkdir -p build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           sudo apt-get update
           sudo apt-get install -y imagemagick
@@ -58,6 +59,6 @@ jobs:
       - name: Upload APK parts
         uses: actions/upload-artifact@v4
         with:
-          name: Lix-APK-Parts
+          name: Lix-APK-Build-${{ github.run_number }}
           path: build-app/dist/Lix.apk.part-*
           if-no-files-found: error
