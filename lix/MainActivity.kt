@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private lateinit var chat: LinearLayout
     private lateinit var input: EditText
-    private lateinit var send: Button
+    private lateinit var send: TextView
     private lateinit var scroll: ScrollView
     private var generation: Job? = null
     private var ready = false
