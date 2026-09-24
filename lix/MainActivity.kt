@@ -20,6 +20,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.LinearGradient
 import android.graphics.RadialGradient
+import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -29,6 +30,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.HorizontalScrollView
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -141,7 +143,7 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         header.addView(LogoView(this, 34), LinearLayout.LayoutParams(dp(116), dp(58)))
-        val spacer = Space(this)
+        val spacer = View(this)
         header.addView(spacer, LinearLayout.LayoutParams(0, 1, 1f))
         val search = glowButton("⌕", 48)
         search.setOnClickListener { input.requestFocus() }
