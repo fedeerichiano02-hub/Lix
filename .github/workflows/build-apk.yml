@@ -61,6 +61,10 @@ jobs:
           sed -i '/minSdk = 33/a\        ndk { abiFilters += listOf("armeabi-v7a") }' build-app/app/build.gradle.kts
           sed -i '/abiFilters += listOf/c\             abiFilters += listOf("armeabi-v7a")' build-app/lib/build.gradle.kts
           sed -i 's/-DGGML_CPU_ALL_VARIANTS=ON/-DGGML_CPU_ALL_VARIANTS=OFF/' build-app/lib/build.gradle.kts
+          # POCO C65 es ARM 32-bit: reducir memoria de contexto/batch para que prepare() pueda reservar recursos dentro del espacio de direcciones 32-bit.
+          sed -i 's/constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;/constexpr int   DEFAULT_CONTEXT_SIZE    = 2048;/' build-app/lib/src/main/cpp/ai_chat.cpp
+          sed -i 's/constexpr int   BATCH_SIZE              = 512;/constexpr int   BATCH_SIZE              = 128;/' build-app/lib/src/main/cpp/ai_chat.cpp
+          sed -i 's/constexpr int   N_THREADS_MAX          = 4;/constexpr int   N_THREADS_MAX          = 2;/' build-app/lib/src/main/cpp/ai_chat.cpp
           python3 lix/patch_android_abi.py
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
           cp lix/AndroidManifest.xml build-app/app/src/main/AndroidManifest.xml
