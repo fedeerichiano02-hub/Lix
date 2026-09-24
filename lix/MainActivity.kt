@@ -22,6 +22,14 @@ import android.graphics.LinearGradient
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.BitmapFactory
+import android.os.Build
+import android.provider.Settings
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
@@ -63,6 +71,9 @@ class MainActivity : AppCompatActivity() {
     private var ready = false
     private var internetMode = false
     private var autoWebBusy = false
+    private var continuousVoice = false
+    private var wakeServiceEnabled = false
+    private var taskMode = false
     private var lastSearchContext = ""
     private var lastUiUpdate = 0L
     private var selectedFileText: String? = null
@@ -93,6 +104,8 @@ class MainActivity : AppCompatActivity() {
         tts = TextToSpeech(this, TextToSpeech.OnInitListener { if (it == TextToSpeech.SUCCESS) tts.language = Locale("es", "AR") })
         buildUi()
         setupSpeech()
+        wakeServiceEnabled = prefs.getBoolean("wake_enabled", true)
+        if (wakeServiceEnabled) requestVoiceCapabilityIfNeeded()
         lifecycleScope.launch(Dispatchers.IO) {
             engine = AiChat.getInferenceEngine(applicationContext)
             prepareModel()
@@ -207,7 +220,7 @@ class MainActivity : AppCompatActivity() {
                     when (i) {
                         0 -> showReferenceScreen("internet")
                         1 -> showReferenceScreen("files")
-                        2 -> toast("La generación de imágenes se conecta en la siguiente etapa.")
+                        2 -> pickImageForVision()
                         3 -> { input.setText("Ayudame con mi proyecto: "); input.requestFocus() }
                     }
                 }
@@ -288,6 +301,7 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(56)))
         setContentView(root)
+        if (Build.VERSION.SDK_INT >= 30) window.setDecorFitsSystemWindows(true)
         input.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 scroll.postDelayed({ scroll.fullScroll(View.FOCUS_DOWN) }, 120)
@@ -297,8 +311,7 @@ class MainActivity : AppCompatActivity() {
             val visible = android.graphics.Rect()
             window.decorView.getWindowVisibleDisplayFrame(visible)
             val keyboardHeight = window.decorView.rootView.height - visible.bottom
-            val keyboardOpen = keyboardHeight > dp(180)
-            nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
+            val keyboardOpen = keyboardHeight > dp(180)            nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
             if (input.hasFocus()) scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
         }
         window.decorView.postDelayed({ showSplashOverlay() }, 120)
@@ -413,6 +426,16 @@ class MainActivity : AppCompatActivity() {
         val prompt = input.text.toString().trim()
         if (prompt.isEmpty() || !ready) return
 
+        if (runPhoneAction(prompt)) {
+            input.setText("")
+            speakLix("Listo, compa.")
+            return
+        }
+        if (LixAutomation.handle(this, prompt)) {
+            input.setText("")
+            return
+        }
+
         if (prompt.startsWith("Recordá esto:", true)) {
             remember(prompt.substringAfter(":").trim())
             addMessage("VOS", prompt)
@@ -438,6 +461,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        taskMode = qIsTaskCommand(prompt)
         input.setText("")
         input.isEnabled = false
         send.isEnabled = false
@@ -469,7 +493,11 @@ class MainActivity : AppCompatActivity() {
                             history.add("LIX" to final)
                             saveHistory()
                             learnFromConversation(prompt, final)
-                            if (prefs.getBoolean("tts", false)) tts.speak(final, TextToSpeech.QUEUE_FLUSH, null, "lix")
+                            if (prefs.getBoolean("tts", false) || continuousVoice) speakLix(final)
+                            if (taskMode) {
+                                announceTaskCompletion("Compa, terminé la tarea que me pediste.")
+                                taskMode = false
+                            }
                         }
                         input.isEnabled = true
                         send.isEnabled = true
@@ -489,6 +517,13 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
         }
+    }
+
+    private fun qIsTaskCommand(prompt: String): Boolean {
+        val q = prompt.lowercase(Locale("es","AR"))
+        return q.contains("haceme") || q.contains("hacé") || q.contains("creame") || q.contains("creá") ||
+            q.contains("modificá") || q.contains("modifica") || q.contains("preparame") || q.contains("prepará") ||
+            q.contains("investigá") || q.contains("analizá")
     }
 
     private fun addMessage(author: String, message: String) {
@@ -597,8 +632,7 @@ class MainActivity : AppCompatActivity() {
             paint.strokeWidth = dp(4).toFloat()
             paint.strokeCap = Paint.Cap.ROUND
             paint.color = Color.rgb(47, 221, 255)
-            if (logoSize >= 80) {
-                val r = RectF(dp(20).toFloat(), h*.20f, w-dp(20).toFloat(), h*.82f)
+            if (logoSize >= 80) {                val r = RectF(dp(20).toFloat(), h*.20f, w-dp(20).toFloat(), h*.82f)
                 paint.strokeWidth = dp(5).toFloat()
                 paint.color = Color.rgb(47, 221, 255)
                 canvas.drawArc(r, 205f, 165f, false, paint)
@@ -742,9 +776,35 @@ class MainActivity : AppCompatActivity() {
                 screenDialog("Memoria", "TU MEMORIA PERSONAL", body)
             }
             "settings" -> {
-                val items = arrayOf("Tema visual" to "Colores, estilo y apariencia." to "◉", "Voz de Lix" to "Idioma, tono y personalidad." to "≋", "Modelo de IA" to "Opciones y comportamiento." to "▦", "Privacidad" to "Datos y almacenamiento." to "♙", "Notificaciones" to "Alertas y sonidos." to "♧", "Actualizaciones" to "Versión, estado y comprobación." to "☁")
-                items.forEach { item -> body.addView(screenCard(item.first.first, item.first.second, item.second), LinearLayout.LayoutParams(-1, dp(70)).apply { bottomMargin = dp(8) }) }
-                screenDialog("Configuración", "PERSONALIZÁ LIX", body)
+                val items = arrayOf(
+                    "Tema visual" to "Colores, estilo y apariencia." to "◉",
+                    "Voz de Lix" to "Activación, conversación continua y voz." to "≋",
+                    "Modelo de IA" to "Qwen local y procesamiento en el dispositivo." to "▦",
+                    "Permisos de Lix" to "Archivos, micrófono, ubicación, SMS y control del teléfono." to "♙",
+                    "Proyecto Godot" to "Elegí la carpeta que Lix puede leer y modificar." to "◇",
+                    "Asistente del sistema" to "Configurar Lix como asistente de Android." to "◎",
+                    "Privacidad" to "Datos y almacenamiento local." to "♙",
+                    "Notificaciones" to "Alertas y finalización de tareas." to "♧",
+                    "Actualizaciones" to "Versión, estado y comprobación." to "☁"
+                )
+                items.forEach { item ->
+                    val card = screenCard(item.first.first, item.first.second, item.second)
+                    card.setOnClickListener {
+                        when (item.first.first) {
+                            "Voz de Lix" -> {
+                                wakeServiceEnabled = !wakeServiceEnabled
+                                prefs.edit().putBoolean("wake_enabled", wakeServiceEnabled).apply()
+                                if (wakeServiceEnabled) requestVoiceCapabilityIfNeeded() else stopWakeService()
+                                toast(if (wakeServiceEnabled) "Activación por voz activada." else "Activación por voz desactivada.")
+                            }
+                            "Proyecto Godot" -> LixAutomation.handle(this, "elegir proyecto Godot")
+                            "Asistente del sistema" -> openAssistantRoleSettings()
+                            "Permisos de Lix" -> startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.parse("package:$packageName") })
+                        }
+                    }
+                    body.addView(card, LinearLayout.LayoutParams(-1, dp(70)).apply { bottomMargin = dp(8) })
+                }
+                screenDialog("Configuración", "CONTROL TOTAL DE LIX", body)
             }
             "history" -> {
                 history.takeLast(12).reversed().forEach { pair -> body.addView(screenCard(pair.first, pair.second.take(90), "●"), LinearLayout.LayoutParams(-1, dp(70)).apply { bottomMargin = dp(7) }) }
@@ -822,6 +882,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 4201 && resultCode == RESULT_OK) {
+            data?.data?.let { uri ->
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                prefs.edit().putString(LixAutomation.PREF_TREE_URI, uri.toString()).apply()
+                toast("Proyecto Godot autorizado para Lix.")
+                speakLix("Listo, compa. Ya tengo acceso autorizado a esa carpeta.")
+            }
+            return
+        }
+        if (requestCode == 1002 && resultCode == RESULT_OK) {
+            data?.data?.let { analyzeImage(it) }
+            return
+        }
         if (requestCode == 1001 && resultCode == RESULT_OK) {
             data?.data?.let { uri ->
                 lifecycleScope.launch(Dispatchers.IO) {
@@ -925,7 +998,11 @@ class MainActivity : AppCompatActivity() {
                     history.add("LIX" to final)
                     saveHistory()
                     learnFromConversation(query, final)
-                    if (prefs.getBoolean("tts", false)) tts.speak(final, TextToSpeech.QUEUE_FLUSH, null, "lix")
+                    if (prefs.getBoolean("tts", false) || continuousVoice) speakLix(final)
+                    if (taskMode) {
+                        announceTaskCompletion("Compa, terminé la tarea que me pediste.")
+                        taskMode = false
+                    }
                 }
                 input.isEnabled = true
                 send.isEnabled = true
@@ -972,9 +1049,14 @@ class MainActivity : AppCompatActivity() {
             override fun onResults(results: Bundle) {
                 val text = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
                 if (!text.isNullOrBlank()) {
-                    input.setText(text)
-                    input.setSelection(input.text.length)
-                    input.requestFocus()
+                    if (continuousVoice) {
+                        input.setText(text)
+                        sendMessage()
+                    } else {
+                        input.setText(text)
+                        input.setSelection(input.text.length)
+                        input.requestFocus()
+                    }
                 }
             }
             override fun onError(error: Int) { toast("No pude reconocer la voz") }
@@ -988,6 +1070,100 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    private fun speakLix(text: String) {
+        if (text.isBlank()) return
+        tts.setPitch(0.92f)
+        tts.setSpeechRate(0.96f)
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "lix")
+    }
+
+    private fun announceTaskCompletion(message: String) {
+        try {
+            startService(Intent(this, LixTaskService::class.java).putExtra("task_message", message))
+        } catch (_: Exception) {
+            speakLix(message)
+        }
+    }
+
+    private fun requestVoiceCapabilityIfNeeded() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 2001)
+        } else {
+            startWakeService()
+        }
+    }
+
+    private fun startWakeService() {
+        if (!wakeServiceEnabled) return
+        try {
+            val i = Intent(this, LixWakeService::class.java)
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(i) else startService(i)
+        } catch (_: Exception) {
+            toast("Android bloqueó la activación de voz en segundo plano.")
+        }
+    }
+
+    private fun stopWakeService() {
+        stopService(Intent(this, LixWakeService::class.java))
+    }
+
+    private fun openAssistantRoleSettings() {
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                val rm = getSystemService(android.app.role.RoleManager::class.java)
+                if (rm != null && rm.isRoleAvailable(android.app.role.RoleManager.ROLE_ASSISTANT)) {
+                    startActivityForResult(rm.createRequestRoleIntent(android.app.role.RoleManager.ROLE_ASSISTANT), 4301)
+                    return
+                }
+            }
+        } catch (_: Exception) {}
+        startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
+    }
+
+    private fun runPhoneAction(command: String): Boolean {
+        val q = command.lowercase(Locale("es","AR"))
+        val service = LixAccessibilityService.instance ?: return false
+        return when {
+            q.contains("andá al inicio") || q.contains("ir al inicio") -> service.goHome()
+            q.contains("volvé atrás") || q.contains("volver atrás") -> service.goBack()
+            q.contains("abrí las notificaciones") -> service.openNotifications()
+            q.contains("mostrá las aplicaciones recientes") || q.contains("abrí recientes") -> service.openRecents()
+            else -> false
+        }
+    }
+
+    private fun pickImageForVision() {
+        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            type = "image/*"
+            addCategory(Intent.CATEGORY_OPENABLE)
+        }, 1002)
+    }
+
+    private fun analyzeImage(uri: Uri) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val image = InputImage.fromFilePath(this@MainActivity, uri)
+                val textTask = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS).process(image)
+                val labelTask = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS).process(image)
+                val textResult = com.google.android.gms.tasks.Tasks.await(textTask)
+                val labels = com.google.android.gms.tasks.Tasks.await(labelTask)
+                val ocr = textResult.text.trim()
+                val tags = labels.take(8).joinToString(", ") { it.text }
+                withContext(Dispatchers.Main) {
+                    val report = buildString {
+                        append("Análisis visual de Lix:\n")
+                        append("Objetos/conceptos detectados: ").append(if (tags.isBlank()) "sin etiquetas claras" else tags).append("\n")
+                        append("Texto detectado:\n").append(if (ocr.isBlank()) "No encontré texto legible." else ocr.take(5000))
+                    }
+                    addMessage("LIX", report)
+                    speakLix("Compa, terminé el análisis de la imagen.")
+                }
+            } catch (err: Exception) {
+                withContext(Dispatchers.Main) { toast("No pude analizar esa imagen: " + (err.message ?: "error")) }
+            }
+        }
+    }
+
     private fun premiumPanel(title: String, subtitle: String, content: String, actionText: String = "Cerrar", action: (() -> Unit)? = null) {
         val dialog = Dialog(this)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
@@ -998,72 +1174,3 @@ class MainActivity : AppCompatActivity() {
         val b=TextView(this).apply { text=actionText; textSize=13f; gravity=Gravity.CENTER; setTextColor(Color.WHITE); background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(72,112,255),Color.rgb(174,82,255))).apply { cornerRadius=dp(18).toFloat() }; setOnClickListener { action?.invoke(); dialog.dismiss() } }
         root.addView(b,LinearLayout.LayoutParams(-1,dp(50)))
         dialog.setContentView(root); dialog.setCanceledOnTouchOutside(true); dialog.show(); dialog.window?.setLayout((resources.displayMetrics.widthPixels*0.90).toInt(),-2)
-    }
-    private fun startVoice() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 2001)
-            return
-        }
-        if (speech == null) setupSpeech()
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale("es", "AR"))
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Hablale a Lix")
-        }
-        speech?.startListening(intent)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 2001 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) startVoice()
-    }
-
-    private fun showMemory() { showReferenceScreen("memory") }
-
-    private fun remember(text: String) {
-        val old = prefs.getString("memory", "") ?: ""
-        prefs.edit().putString("memory", (old + "\n• " + text).trim()).apply()
-    }
-
-    private fun openSettings() { showReferenceScreen("settings") }
-
-    private fun editName() {
-        val e = EditText(this).apply { setText(profileName); setSelectAllOnFocus(true) }
-        AlertDialog.Builder(this).setTitle("Tu nombre").setView(e)
-            .setPositiveButton("Guardar") { _, _ ->
-                profileName = e.text.toString().ifBlank { "compa" }
-                prefs.edit().putString("profile_name", profileName).apply()
-                toast("Perfil actualizado")
-            }.setNegativeButton("Cancelar", null).show()
-    }
-
-    private fun openProfile() { showReferenceScreen("settings") }
-
-    private fun showHistory() { showReferenceScreen("history") }
-
-    private fun saveHistory() {
-        val arr = JSONArray()
-        history.takeLast(50).forEach { (a, m) -> arr.put(JSONObject().apply { put("a", a); put("m", m) }) }
-        prefs.edit().putString("history", arr.toString()).apply()
-    }
-
-    private fun loadHistory() {
-        try {
-            val arr = JSONArray(prefs.getString("history", "[]"))
-            for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                history.add(o.getString("a") to o.getString("m"))
-            }
-        } catch (_: Exception) {}
-    }
-
-    private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-
-    override fun onDestroy() {
-        generation?.cancel()
-        speech?.destroy()
-        tts.shutdown()
-        if (::engine.isInitialized) engine.destroy()
-        super.onDestroy()
-    }
-}
