@@ -87,6 +87,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg
         window.navigationBarColor = bg
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         profileName = prefs.getString("profile_name", "compa") ?: "compa"
         loadHistory()
         tts = TextToSpeech(this, TextToSpeech.OnInitListener { if (it == TextToSpeech.SUCCESS) tts.language = Locale("es", "AR") })
@@ -244,6 +245,10 @@ class MainActivity : AppCompatActivity() {
                 Color.argb(145, 69, 112, 219))
             isEnabled = false
         }
+        input.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEND
+        input.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) { sendMessage(); true } else false
+        }
         composer.addView(input, LinearLayout.LayoutParams(0, dp(58), 1f))
         val voice = glowButton("♩", 52)
         voice.setTextColor(Color.rgb(83, 220, 255))
@@ -283,6 +288,14 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(56)))
         setContentView(root)
+        input.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                scroll.postDelayed({ scroll.fullScroll(View.FOCUS_DOWN) }, 120)
+            }
+        }
+        window.decorView.viewTreeObserver.addOnGlobalLayoutListener {
+            if (input.hasFocus()) scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+        }
         window.decorView.postDelayed({ showSplashOverlay() }, 120)
     }
 
