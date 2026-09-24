@@ -40,8 +40,19 @@ jobs:
           cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/accessibility_service_config.xml
           cp lix/voice_interaction_service.xml build-app/app/src/main/res/xml/voice_interaction_service.xml
           python3 lix/apply_glass_ui.py
-          grep -q 'com.google.mlkit:text-recognition' build-app/app/build.gradle.kts || sed -i '/dependencies {/a\    implementation("com.google.mlkit:text-recognition:16.0.1")
-          implementation("com.google.mlkit:image-labeling:17.0.9")' build-app/app/build.gradle.kts
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("build-app/app/build.gradle.kts")
+          s = p.read_text()
+          deps = [
+              '    implementation("com.google.mlkit:text-recognition:16.0.1")',
+              '    implementation("com.google.mlkit:image-labeling:17.0.9")'
+          ]
+          missing = [d for d in deps if d not in s]
+          if missing:
+              s = s.replace("dependencies {", "dependencies {\n" + "\n".join(missing), 1)
+              p.write_text(s)
+          PY
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
           cp lix/AndroidManifest.xml build-app/app/src/main/AndroidManifest.xml
