@@ -58,6 +58,33 @@ jobs:
               p.write_text(s)
           PY
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
+          sed -i '/minSdk = 33/a\        ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }' build-app/app/build.gradle.kts
+          python3 - <<'PY'
+          from pathlib import Path
+          cmake = Path("build-app/lib/src/main/cpp/CMakeLists.txt")
+          c = cmake.read_text()
+          old = """    elseif(ANDROID_ABI STREQUAL "x86_64")
+        set(GGML_SYSTEM_ARCH "x86")
+        set(GGML_CPU_KLEIDIAI OFF)
+        set(GGML_OPENMP OFF)
+    else()
+        message(FATAL_ERROR "Unsupported ABI: ${ANDROID_ABI}")
+    endif()"""
+          new = """    elseif(ANDROID_ABI STREQUAL "x86_64")
+        set(GGML_SYSTEM_ARCH "x86")
+        set(GGML_CPU_KLEIDIAI OFF)
+        set(GGML_OPENMP OFF)
+    elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
+        set(GGML_SYSTEM_ARCH "ARM")
+        set(GGML_CPU_KLEIDIAI OFF)
+        set(GGML_OPENMP ON)
+    else()
+        message(FATAL_ERROR "Unsupported ABI: ${ANDROID_ABI}")
+    endif()"""
+          if old not in c:
+              raise SystemExit("Expected CMake ABI block not found")
+          cmake.write_text(c.replace(old, new))
+          PY
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
           cp lix/AndroidManifest.xml build-app/app/src/main/AndroidManifest.xml
           sed -i '/defaultConfig {/a\        versionCode = ${{ github.run_number }}\n        versionName = "2.0.${{ github.run_number }}"' build-app/app/build.gradle.kts
