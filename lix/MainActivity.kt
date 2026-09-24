@@ -439,7 +439,7 @@ class MainActivity : AppCompatActivity() {
         val prompt = input.text.toString().trim()
         if (prompt.isEmpty() || !ready) return
 
-        if (runPhoneAction(prompt)) {
+        if (LixMegaModules.handle(this, prompt)) {\n            input.setText("")\n            return\n        }\n\n        if (runPhoneAction(prompt)) {
             input.setText("")
             speakLix("Listo, compa.")
             return
