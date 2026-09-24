@@ -3,5 +3,4 @@
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:canRetrieveWindowContent="true"
-    android:description="Permite a Lix ejecutar acciones del teléfono que vos autorices."
     android:notificationTimeout="100" />
