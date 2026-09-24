@@ -35,6 +35,8 @@ jobs:
           sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET" />' build-app/app/src/main/AndroidManifest.xml
           sed -i 's#<application#<application android:icon="@drawable/lix_icon" android:roundIcon="@drawable/lix_icon"#' build-app/app/src/main/AndroidManifest.xml
           mkdir -p build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
           convert lix/lix_icon.svg -resize 512x512 build-app/app/src/main/res/drawable/lix_icon.png
       - name: Download Qwen3
         run: |
