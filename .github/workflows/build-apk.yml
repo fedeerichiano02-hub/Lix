@@ -1,4 +1,5 @@
 name: Build Lix APK
+# Stable build workflow
 
 on:
   workflow_dispatch:
