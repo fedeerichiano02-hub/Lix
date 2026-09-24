@@ -41,11 +41,14 @@ jobs:
           cp lix/LixVoiceSessionService.kt build-app/app/src/main/java/com/example/llama/LixVoiceSessionService.kt
           cp lix/LixProjectManager.kt build-app/app/src/main/java/com/example/llama/LixProjectManager.kt
           cp lix/LixEvolution.kt build-app/app/src/main/java/com/example/llama/LixEvolution.kt
+          cp lix/LixVisualCreator.kt build-app/app/src/main/java/com/example/llama/LixVisualCreator.kt
+          cp lix/LixFeatureHub.kt build-app/app/src/main/java/com/example/llama/LixFeatureHub.kt
           cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
           mkdir -p build-app/app/src/main/res/xml
           cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/accessibility_service_config.xml
           cp lix/voice_interaction_service.xml build-app/app/src/main/res/xml/voice_interaction_service.xml
           python3 lix/apply_glass_ui.py
+          python3 lix/mega_features_patch.py
           python3 - <<'PY'
           from pathlib import Path
           p = Path("build-app/app/build.gradle.kts")
