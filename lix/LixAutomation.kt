@@ -60,6 +60,17 @@ object LixAutomation {
             return true
         }
 
+        if (q.contains("creá un archivo") || q.contains("crea un archivo") || q.contains("crear un archivo")) {
+            val match = Regex("""(?i)(?:creá|crea|crear)\\s+(?:un\\s+)?archivo\\s+([^\\s]+)\\s+con\\s+(.+)""").find(command)
+            if (match != null) {
+                val path = match.groupValues[1]
+                val content = match.groupValues[2]
+                val ok = LixProjectManager.writeAuthorizedFile(activity, path, content)
+                Toast.makeText(activity, if (ok) "Archivo creado/modificado en el proyecto." else "No tengo acceso autorizado al proyecto Godot.", Toast.LENGTH_LONG).show()
+                return true
+            }
+        }
+
         if (q.contains("elegir proyecto godot") || q.contains("seleccionar proyecto godot") || q.contains("abrir carpeta del proyecto")) {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
