@@ -25,6 +25,8 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -321,7 +323,8 @@ class MainActivity : AppCompatActivity() {
             val visible = android.graphics.Rect()
             window.decorView.getWindowVisibleDisplayFrame(visible)
             val keyboardHeight = window.decorView.rootView.height - visible.bottom
-            val keyboardOpen = keyboardHeight > dp(180)            nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
+            val keyboardOpen = keyboardHeight > dp(180)
+            nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
             if (input.hasFocus()) scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
         }
         window.decorView.postDelayed({ showSplashOverlay() }, 120)
@@ -1184,3 +1187,5 @@ class MainActivity : AppCompatActivity() {
         val b=TextView(this).apply { text=actionText; textSize=13f; gravity=Gravity.CENTER; setTextColor(Color.WHITE); background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(Color.rgb(72,112,255),Color.rgb(174,82,255))).apply { cornerRadius=dp(18).toFloat() }; setOnClickListener { action?.invoke(); dialog.dismiss() } }
         root.addView(b,LinearLayout.LayoutParams(-1,dp(50)))
         dialog.setContentView(root); dialog.setCanceledOnTouchOutside(true); dialog.show(); dialog.window?.setLayout((resources.displayMetrics.widthPixels*0.90).toInt(),-2)
+    }
+}
