@@ -29,7 +29,17 @@ jobs:
           rm -rf build-app
           cp -a llama.cpp/examples/llama.android/. build-app/
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
+          cp lix/LixAutomation.kt build-app/app/src/main/java/com/example/llama/LixAutomation.kt
+          cp lix/LixAccessibilityService.kt build-app/app/src/main/java/com/example/llama/LixAccessibilityService.kt
+          cp lix/LixWakeService.kt build-app/app/src/main/java/com/example/llama/LixWakeService.kt
+          cp lix/LixTaskService.kt build-app/app/src/main/java/com/example/llama/LixTaskService.kt
+          cp lix/LixVoiceInteractionService.kt build-app/app/src/main/java/com/example/llama/LixVoiceInteractionService.kt
+          cp lix/LixVoiceSessionService.kt build-app/app/src/main/java/com/example/llama/LixVoiceSessionService.kt
+          mkdir -p build-app/app/src/main/res/xml
+          cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/accessibility_service_config.xml
+          cp lix/voice_interaction_service.xml build-app/app/src/main/res/xml/voice_interaction_service.xml
           python3 lix/apply_glass_ui.py
+          grep -q 'com.google.mlkit:text-recognition' build-app/app/build.gradle.kts || sed -i '/dependencies {/a\    implementation("com.google.mlkit:text-recognition:16.0.1")' build-app/app/build.gradle.kts
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
           cp lix/AndroidManifest.xml build-app/app/src/main/AndroidManifest.xml
