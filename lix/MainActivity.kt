@@ -121,250 +121,251 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun buildUi() {
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(bg)
-            setPadding(dp(16), dp(10), dp(16), dp(8))
+        val bgTop = Color.rgb(5, 8, 19)
+        val bgBottom = Color.rgb(12, 7, 28)
+        val glass = Color.argb(135, 20, 27, 49)
+        val glassStrong = Color.argb(185, 17, 24, 45)
+        val glassSoft = Color.argb(95, 38, 46, 75)
+        val line = Color.argb(110, 119, 164, 218)
+        val cyan = Color.rgb(53, 224, 255)
+        val blue = Color.rgb(76, 128, 255)
+        val violet = Color.rgb(177, 92, 255)
+        val white = Color.rgb(244, 248, 255)
+        val muted = Color.rgb(158, 170, 198)
+
+        fun card(color: Int, radius: Int = 20, stroke: Int = line) =
+            GradientDrawable().apply {
+                setColor(color)
+                cornerRadius = dp(radius).toFloat()
+                setStroke(dp(1), stroke)
+            }
+        fun t(value: String, size: Float, color: Int = white) = TextView(this).apply {
+            text = value
+            textSize = size
+            setTextColor(color)
+            includeFontPadding = false
+        }
+        fun hs() = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            clipToPadding = false
         }
 
-        // Header
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(bgTop, Color.rgb(8, 12, 28), bgBottom)
+            )
+            setPadding(dp(14), dp(9), dp(14), dp(8))
+        }
+
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(72)
         }
-
-        val menu = TextView(this).apply {
-            text = "☰"
-            textSize = 29f
-            setTextColor(textColor)
+        header.addView(t("☰", 23f).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.TRANSPARENT, 14)
             setOnClickListener { openMenu() }
-        }
-        header.addView(menu, LinearLayout.LayoutParams(dp(48), dp(58)))
+        }, LinearLayout.LayoutParams(dp(48), dp(54)))
 
         val brand = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
         }
-        brand.addView(TextView(this).apply {
-            text = "LIX"
-            textSize = 38f
-            setTextColor(Color.WHITE)
+        brand.addView(t("Lix", 24f).apply {
             gravity = Gravity.CENTER
-            includeFontPadding = false
-        }, LinearLayout.LayoutParams(-1, dp(40)))
-        brand.addView(label("TU ASISTENTE INTELIGENTE", 10f, accent).apply {
-            gravity = Gravity.CENTER
-        })
-        brand.addView(label("PENSÁ  •  CREÁ  •  RESOLVÉ  •  AVANZÁ", 7.5f, muted).apply {
-            gravity = Gravity.CENTER
-            setPadding(0, dp(2), 0, 0)
-        })
-        header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
-
-        header.addView(TextView(this).apply {
-            text = "☼"
-            textSize = 29f
-            setTextColor(accent)
-            gravity = Gravity.CENTER
-            setOnClickListener { openSettings() }
-        }, LinearLayout.LayoutParams(dp(48), dp(58)))
-
-        root.addView(header)
-
-        // Status card
-        val info = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(13), dp(16), dp(13))
-            background = rounded(panel, 18, border)
-        }
-
-        info.addView(label("●  Lix Online", 15f, green).apply {
             setTypeface(typeface, android.graphics.Typeface.BOLD)
         })
-        status = label("Modelo: Qwen3 1.7B (Local)", 12.5f, textColor)
-        info.addView(status, LinearLayout.LayoutParams(-1, dp(24)))
-        info.addView(label("◉  Motor local activo", 11.5f, muted))
-
-        root.addView(info, LinearLayout.LayoutParams(-1, dp(122)).apply {
-            topMargin = dp(7)
+        brand.addView(t("ASISTENTE INTELIGENTE", 8f, cyan).apply {
+            gravity = Gravity.CENTER
+            letterSpacing = .16f
         })
+        header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
+        header.addView(t("⋯", 28f).apply {
+            gravity = Gravity.CENTER
+            setOnClickListener { openSettings() }
+        }, LinearLayout.LayoutParams(dp(48), dp(54)))
+        root.addView(header)
 
-        // Main tool tabs
-        val toolsScroll = horizontalScroller()
-        toolsScroll.setPadding(0, dp(9), 0, dp(4))
-        val tools = LinearLayout(this).apply {
+        val info = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(13), dp(16), dp(12))
+            background = card(glassStrong, 24)
+        }
+        val infoTop = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
+        infoTop.addView(t("Lix", 16f).apply {
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        status = t("Preparando…", 11f, muted)
+        infoTop.addView(status)
+        info.addView(infoTop)
+        info.addView(t("Tu espacio privado para pensar, crear y resolver.", 12f, muted).apply {
+            setPadding(0, dp(5), 0, 0)
+        })
+        root.addView(info, LinearLayout.LayoutParams(-1, dp(80)).apply { topMargin = dp(4) })
 
-        val toolNames = arrayOf(
-            "▣  Chat", "◎  Internet", "□  Proyecto", "▤  Archivos",
-            "</>  Código", "♩  Voz", "▥  Memoria", "⚙  Ajustes"
-        )
-
-        toolNames.forEachIndexed { index, name ->
-            val chip = TextView(this).apply {
-                text = name
-                textSize = 11f
-                setTextColor(if (index == 0) Color.WHITE else textColor)
-                gravity = Gravity.CENTER
-                setPadding(dp(13), 0, dp(13), 0)
-                background = rounded(
-                    if (index == 0) Color.rgb(14, 48, 78) else panel,
-                    15,
-                    if (index == 0) accent else border
-                )
-                setOnClickListener { toolAction(index) }
+        val toolsScroll = hs().apply { setPadding(0, dp(9), 0, dp(4)) }
+        val tools = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        arrayOf("Chat", "Internet", "Proyecto", "Archivos", "Código", "Voz", "Memoria", "Ajustes")
+            .forEachIndexed { index, name ->
+                val chip = t((if (index == 0) "●  " else "○  ") + name, 11f, if (index == 0) white else muted).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(dp(13), 0, dp(13), 0)
+                    background = card(
+                        if (index == 0) Color.argb(170, 37, 93, 143) else glassSoft,
+                        18,
+                        if (index == 0) Color.argb(190, 70, 221, 255) else line
+                    )
+                    setOnClickListener { toolAction(index) }
+                }
+                tools.addView(chip, LinearLayout.LayoutParams(dp(118), dp(43)).apply {
+                    marginEnd = dp(8)
+                })
             }
-            tools.addView(chip, LinearLayout.LayoutParams(dp(132), dp(50)).apply {
-                marginEnd = dp(8)
-            })
-        }
-
         toolsScroll.addView(tools)
-        root.addView(toolsScroll, LinearLayout.LayoutParams(-1, dp(63)))
+        root.addView(toolsScroll, LinearLayout.LayoutParams(-1, dp(56)))
 
-        // Chat area
         scroll = ScrollView(this).apply {
             isFillViewport = true
             overScrollMode = View.OVER_SCROLL_NEVER
         }
-
         chat = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(1), dp(4), dp(1), dp(10))
+            setPadding(dp(1), dp(7), dp(1), dp(12))
         }
-
         scroll.addView(chat)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        // Quick actions
-        val quickScroll = horizontalScroller()
-        quickScroll.setPadding(0, dp(2), 0, dp(4))
-        val quick = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        val welcome = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(23), dp(27), dp(23), dp(27))
+            background = card(
+                Color.argb(105, 28, 35, 61),
+                28,
+                Color.argb(100, 120, 157, 219)
+            )
         }
+        welcome.addView(t("Lix", 34f).apply {
+            gravity = Gravity.CENTER
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        welcome.addView(t("¿En qué trabajamos hoy?", 17f).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(5), 0, 0)
+        })
+        welcome.addView(t(
+            "Preguntá, escribí, investigá o hablá. Lix se adapta a vos.",
+            12f, muted
+        ).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(7), 0, 0)
+        })
+        chat.addView(welcome, LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(12)
+        })
 
+        val quickScroll = hs().apply { setPadding(0, dp(1), 0, dp(5)) }
+        val quick = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         arrayOf(
-            "Buscar en Internet",
-            "Ver mi proyecto",
-            "Analizar un archivo",
+            "Buscar algo",
+            "Analizar archivo",
             "Ayudarme a programar",
-            "Recordar algo",
-            "Modo voz"
+            "Recordar esto",
+            "Hablar con Lix"
         ).forEach { action ->
-            val chip = TextView(this).apply {
-                text = action
-                textSize = 10.5f
-                setTextColor(textColor)
+            val chip = t(action, 10.5f).apply {
                 gravity = Gravity.CENTER
-                setPadding(dp(13), 0, dp(13), 0)
-                background = rounded(panel2, 14, border)
+                setPadding(dp(12), 0, dp(12), 0)
+                background = card(glassSoft, 16)
                 setOnClickListener { quickAction(action) }
             }
-            quick.addView(chip, LinearLayout.LayoutParams(dp(176), dp(45)).apply {
+            quick.addView(chip, LinearLayout.LayoutParams(dp(160), dp(42)).apply {
                 marginEnd = dp(8)
             })
         }
-
         quickScroll.addView(quick)
-        root.addView(quickScroll, LinearLayout.LayoutParams(-1, dp(53)))
+        root.addView(quickScroll, LinearLayout.LayoutParams(-1, dp(51)))
 
-        // Composer
-        val inputRow = LinearLayout(this).apply {
+        val composer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(4), 0, dp(6))
+            setPadding(0, dp(4), 0, dp(7))
         }
-
-        val attach = TextView(this).apply {
-            text = "+"
-            textSize = 28f
-            setTextColor(textColor)
+        composer.addView(t("＋", 25f).apply {
             gravity = Gravity.CENTER
-            background = rounded(panel, 15, border)
+            background = card(glassSoft, 18)
             setOnClickListener { pickFile() }
-        }
-        inputRow.addView(attach, LinearLayout.LayoutParams(dp(52), dp(58)).apply {
-            marginEnd = dp(8)
+        }, LinearLayout.LayoutParams(dp(48), dp(56)).apply {
+            marginEnd = dp(7)
         })
 
         input = EditText(this).apply {
-            hint = "Escribí tu mensaje..."
+            hint = "Escribile a Lix…"
             textSize = 14f
-            setHintTextColor(Color.rgb(105, 126, 148))
-            setTextColor(textColor)
-            setSingleLine(false)
+            setTextColor(white)
+            setHintTextColor(Color.rgb(117, 130, 157))
             maxLines = 3
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(15), 0, dp(12), 0)
-            background = rounded(panel, 15, border)
+            setPadding(dp(16), 0, dp(10), 0)
+            background = card(Color.argb(145, 20, 27, 48), 19)
             isEnabled = false
         }
-        inputRow.addView(input, LinearLayout.LayoutParams(0, dp(58), 1f))
+        composer.addView(input, LinearLayout.LayoutParams(0, dp(56), 1f))
 
-        val voice = TextView(this).apply {
-            text = "◉"
-            textSize = 20f
-            setTextColor(textColor)
+        composer.addView(t("◉", 19f, cyan).apply {
             gravity = Gravity.CENTER
-            background = rounded(panel, 15, border)
+            background = card(glassSoft, 18)
             setOnClickListener { startVoice() }
-        }
-        inputRow.addView(voice, LinearLayout.LayoutParams(dp(52), dp(58)).apply {
-            marginStart = dp(8)
+        }, LinearLayout.LayoutParams(dp(48), dp(56)).apply {
+            marginStart = dp(7)
         })
 
-        send = Button(this).apply {
-            text = "➤"
-            textSize = 22f
-            setTextColor(Color.WHITE)
+        send = t("↑", 22f).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(22, 119, 238), 15)
-            isAllCaps = false
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(blue, violet)
+            ).apply { cornerRadius = dp(18).toFloat() }
             isEnabled = false
-            setPadding(0, 0, 0, 0)
             setOnClickListener { sendMessage() }
         }
-        inputRow.addView(send, LinearLayout.LayoutParams(dp(62), dp(58)).apply {
-            marginStart = dp(8)
+        composer.addView(send, LinearLayout.LayoutParams(dp(55), dp(56)).apply {
+            marginStart = dp(7)
         })
+        root.addView(composer)
 
-        root.addView(inputRow)
-
-        // Bottom navigation
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(2), dp(4), dp(2), 0)
-            background = rounded(Color.rgb(5, 12, 22), 18, Color.rgb(19, 40, 61))
+            background = card(
+                Color.argb(125, 13, 18, 34),
+                21,
+                Color.argb(90, 104, 139, 193)
+            )
+            setPadding(dp(4), dp(3), dp(4), dp(3))
         }
-
-        arrayOf(
-            "⌂\nInicio",
-            "▦\nHerramientas",
-            "◉\nLix",
-            "◴\nHistorial",
-            "♙\nPerfil"
-        ).forEachIndexed { index, item ->
-            val navItem = TextView(this).apply {
-                text = item
-                textSize = if (index == 2) 10.5f else 9.5f
-                gravity = Gravity.CENTER
-                setTextColor(if (index == 2) accent else muted)
-                setPadding(0, dp(7), 0, dp(6))
-                includeFontPadding = false
-                setOnClickListener { bottomAction(index) }
+        arrayOf("Inicio", "Herramientas", "Lix", "Historial", "Perfil")
+            .forEachIndexed { index, name ->
+                nav.addView(t(
+                    name,
+                    if (index == 2) 10.5f else 9.5f,
+                    if (index == 2) cyan else muted
+                ).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(7), 0, dp(7))
+                    setOnClickListener { bottomAction(index) }
+                }, LinearLayout.LayoutParams(0, dp(44), 1f))
             }
-            nav.addView(navItem, LinearLayout.LayoutParams(0, dp(53), 1f))
-        }
-
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(59)))
-
-        root.addView(label("Lix v1.0  |  La inteligencia también puede ser tuya", 8f, muted).apply {
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(52)))
+        root.addView(t(
+            "Lix  •  privado, local y pensado para vos",
+            8f, Color.rgb(116, 126, 151)
+        ).apply {
             gravity = Gravity.CENTER
             setPadding(0, dp(5), 0, 0)
         }, LinearLayout.LayoutParams(-1, dp(18)))
