@@ -32,7 +32,7 @@ object LixMegaModules {
             q.contains("crear una imagen") || q.contains("generá una imagen") || q.contains("genera una imagen") -> { LixVisualCreator.open(c); true }
             q.contains("cerebro") || q.contains("memoria profunda") -> { toast(c, "🧠 Memoria profunda: la memoria y el aprendizaje contextual están activos."); true }
             q.contains("conversación natural") || q.contains("conversacion natural") -> { toast(c, "🗣️ Conversación Natural: voz continua y TTS están disponibles."); true }
-            q.contains("traductor universal") -> { toast(c, "🌎 Traductor Universal: pedile a Lix que traduzca al idioma que quieras."); false }
+            q.contains("traductor universal") -> false
             q.contains("modo experto") -> { prefs(c).edit().putBoolean("expert", true).apply(); toast(c, "🧠 Modo Experto activado."); true }
             q.contains("modo tutor") || q.contains("activar tutor") -> { prefs(c).edit().putBoolean("tutor", true).apply(); toast(c, "📚 Modo Tutor activado."); true }
             q.contains("desactivar modo experto") -> { prefs(c).edit().putBoolean("expert", false).apply(); toast(c, "Modo Experto desactivado."); true }
