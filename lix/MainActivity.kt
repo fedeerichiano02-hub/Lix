@@ -2,6 +2,7 @@ package com.example.llama
 
 import android.Manifest
 import android.app.AlertDialog
+import android.app.Dialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -541,20 +542,156 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openMenu() {
-        val items = arrayOf("Chat", "Internet", "Proyecto / archivos", "Código", "Voz", "Memoria", "Historial", "Ajustes", "Perfil")
-        AlertDialog.Builder(this).setTitle("Lix").setItems(items) { _, which ->
-            when (which) {
-                0 -> toolAction(0)
-                1 -> toolAction(1)
-                2 -> pickFile()
-                3 -> toolAction(4)
-                4 -> startVoice()
-                5 -> showMemory()
-                6 -> showHistory()
-                7 -> openSettings()
-                8 -> openProfile()
+        val cyan = Color.rgb(70, 222, 255)
+        val blue = Color.rgb(72, 112, 255)
+        val purple = Color.rgb(174, 82, 255)
+        val white = Color.rgb(244, 248, 255)
+        val muted = Color.rgb(157, 169, 198)
+        val dark = Color.rgb(5, 7, 22)
+        val panel = Color.argb(170, 17, 22, 49)
+
+        val dialog = Dialog(this)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(18), dp(24), dp(18))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(4, 7, 20), Color.rgb(17, 7, 34))
+            )
+        }
+
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val brand = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        brand.addView(TextView(this).apply {
+            text = "Lix"
+            textSize = 32f
+            setTextColor(white)
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setShadowLayer(dp(12).toFloat(), 0f, 0f, Color.rgb(70, 110, 255))
+        })
+        brand.addView(TextView(this).apply {
+            text = "Tu asistente personal"
+            textSize = 11f
+            setTextColor(cyan)
+        })
+        top.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
+        val close = TextView(this).apply {
+            text = "×"
+            textSize = 30f
+            gravity = Gravity.CENTER
+            setTextColor(white)
+            background = GradientDrawable().apply {
+                setColor(Color.argb(90, 30, 35, 70))
+                cornerRadius = dp(18).toFloat()
+                setStroke(dp(1), Color.argb(100, 91, 133, 221))
             }
-        }.show()
+            setOnClickListener { dialog.dismiss() }
+        }
+        top.addView(close, LinearLayout.LayoutParams(dp(50), dp(50)))
+        root.addView(top)
+
+        root.addView(TextView(this).apply {
+            text = "Todo lo que podés hacer con Lix"
+            textSize = 13f
+            setTextColor(muted)
+            setPadding(0, dp(22), 0, dp(12))
+        })
+
+        val entries = arrayOf(
+            "⌂" to "Chat",
+            "⌕" to "Internet",
+            "▣" to "Archivos",
+            "◆" to "Proyectos",
+            "◉" to "Voz",
+            "✦" to "Memoria",
+            "◴" to "Historial",
+            "⚙" to "Configuración",
+            "♙" to "Personalización"
+        )
+        entries.forEach { (icon, title) ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(15), 0, dp(15), 0)
+                background = GradientDrawable().apply {
+                    setColor(panel)
+                    cornerRadius = dp(18).toFloat()
+                    setStroke(dp(1), Color.argb(75, 91, 133, 221))
+                }
+                setOnClickListener {
+                    dialog.dismiss()
+                    when (title) {
+                        "Chat" -> toolAction(0)
+                        "Internet" -> toolAction(1)
+                        "Archivos" -> pickFile()
+                        "Proyectos" -> toolAction(4)
+                        "Voz" -> startVoice()
+                        "Memoria" -> showMemory()
+                        "Historial" -> showHistory()
+                        "Configuración" -> openSettings()
+                        "Personalización" -> openProfile()
+                    }
+                }
+            }
+            row.addView(TextView(this).apply {
+                text = icon
+                textSize = 18f
+                setTextColor(cyan)
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(dp(38), dp(54)))
+            row.addView(TextView(this).apply {
+                text = title
+                textSize = 14f
+                setTextColor(white)
+                gravity = Gravity.CENTER_VERTICAL
+            }, LinearLayout.LayoutParams(0, dp(54), 1f))
+            row.addView(TextView(this).apply {
+                text = "›"
+                textSize = 22f
+                setTextColor(muted)
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(dp(28), dp(54)))
+            root.addView(row, LinearLayout.LayoutParams(-1, dp(54)).apply { bottomMargin = dp(8) })
+        }
+
+        val online = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.argb(160, 19, 60, 84), Color.argb(145, 52, 35, 89))
+            ).apply {
+                cornerRadius = dp(20).toFloat()
+                setStroke(dp(1), Color.argb(130, 61, 170, 230))
+            }
+        }
+        online.addView(TextView(this).apply {
+            text = "●"
+            textSize = 17f
+            setTextColor(Color.rgb(71, 232, 124))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(dp(32), dp(45)))
+        online.addView(TextView(this).apply {
+            text = "Lix está en línea\nLocal • Qwen3 1.7B"
+            textSize = 11f
+            setTextColor(white)
+            gravity = Gravity.CENTER_VERTICAL
+        }, LinearLayout.LayoutParams(0, dp(45), 1f))
+        root.addView(online, LinearLayout.LayoutParams(-1, dp(65)).apply { topMargin = dp(8) })
+
+        dialog.setContentView(root)
+        dialog.setCanceledOnTouchOutside(true)
+        dialog.window?.setLayout(-1, -1)
+        dialog.show()
+        dialog.window?.setLayout(-1, -1)
     }
 
     private fun pickFile() {
