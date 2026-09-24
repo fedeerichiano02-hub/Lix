@@ -1188,4 +1188,74 @@ class MainActivity : AppCompatActivity() {
         root.addView(b,LinearLayout.LayoutParams(-1,dp(50)))
         dialog.setContentView(root); dialog.setCanceledOnTouchOutside(true); dialog.show(); dialog.window?.setLayout((resources.displayMetrics.widthPixels*0.90).toInt(),-2)
     }
+    private fun startVoice() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 2001)
+            return
+        }
+        if (speech == null) setupSpeech()
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale("es", "AR"))
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Hablale a Lix")
+        }
+        try { speech?.startListening(intent) } catch (_: Exception) {}
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 2001 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) startVoice()
+    }
+
+    private fun showMemory() { showReferenceScreen("memory") }
+
+    private fun remember(text: String) {
+        val old = prefs.getString("memory", "") ?: ""
+        prefs.edit().putString("memory", (old + "\n• " + text).trim()).apply()
+    }
+
+    private fun openSettings() { showReferenceScreen("settings") }
+
+    private fun editName() {
+        val e = EditText(this).apply { setText(profileName); setSelectAllOnFocus(true) }
+        AlertDialog.Builder(this).setTitle("Tu nombre").setView(e)
+            .setPositiveButton("Guardar") { _, _ ->
+                profileName = e.text.toString().ifBlank { "compa" }
+                prefs.edit().putString("profile_name", profileName).apply()
+                toast("Perfil actualizado")
+            }.setNegativeButton("Cancelar", null).show()
+    }
+
+    private fun openProfile() { showReferenceScreen("settings") }
+
+    private fun showHistory() { showReferenceScreen("history") }
+
+    private fun saveHistory() {
+        val arr = JSONArray()
+        history.takeLast(50).forEach { (a, m) -> arr.put(JSONObject().apply { put("a", a); put("m", m) }) }
+        prefs.edit().putString("history", arr.toString()).apply()
+    }
+
+    private fun loadHistory() {
+        try {
+            val arr = JSONArray(prefs.getString("history", "[]"))
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                history.add(o.getString("a") to o.getString("m"))
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+
+    override fun onDestroy() {
+        continuousVoice = false
+        stopWakeService()
+        generation?.cancel()
+        speech?.destroy()
+        tts.shutdown()
+        if (::engine.isInitialized) engine.destroy()
+        super.onDestroy()
+    }
+
 }
