@@ -10,6 +10,7 @@ import android.speech.RecognizerIntent
 import android.speech.RecognitionListener
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.util.Locale
@@ -102,6 +103,15 @@ class MainActivity : AppCompatActivity() {
         profileName = prefs.getString("profile_name", "compa") ?: "compa"
         loadHistory()
         tts = TextToSpeech(this, TextToSpeech.OnInitListener { if (it == TextToSpeech.SUCCESS) tts.language = Locale("es", "AR") })
+        tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String) {}
+            override fun onDone(utteranceId: String) {
+                if (utteranceId == "lix" && continuousVoice) {
+                    runOnUiThread { Handler(Looper.getMainLooper()).postDelayed({ if (continuousVoice) startVoice() }, 350) }
+                }
+            }
+            override fun onError(utteranceId: String) {}
+        })
         buildUi()
         setupSpeech()
         wakeServiceEnabled = prefs.getBoolean("wake_enabled", true)
