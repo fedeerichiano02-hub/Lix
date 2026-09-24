@@ -294,6 +294,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         window.decorView.viewTreeObserver.addOnGlobalLayoutListener {
+            val visible = android.graphics.Rect()
+            window.decorView.getWindowVisibleDisplayFrame(visible)
+            val keyboardHeight = window.decorView.rootView.height - visible.bottom
+            val keyboardOpen = keyboardHeight > dp(180)
+            nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
             if (input.hasFocus()) scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
         }
         window.decorView.postDelayed({ showSplashOverlay() }, 120)
