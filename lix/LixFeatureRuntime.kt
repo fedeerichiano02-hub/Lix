@@ -16,13 +16,9 @@ object LixFeatureRuntime {
             q.contains("crear una imagen") || q.contains("generá una imagen") || q.contains("genera una imagen") -> {
                 LixVisualCreator.open(context); true
             }
-            q.contains("traduc") -> { showPrompt(context, "🌎 Traductor", "Escribí el texto y el idioma destino. Lix lo traducirá usando su IA/Internet."); true }
-            q.contains("modo experto") || q.contains("actuá como experto") -> {
-                Toast.makeText(context, "Modo Experto activado para esta conversación.", Toast.LENGTH_SHORT).show(); false
-            }
-            q.contains("tutor") || q.contains("enseñame") || q.contains("enseñame") -> {
-                Toast.makeText(context, "Modo Tutor activado.", Toast.LENGTH_SHORT).show(); false
-            }
+            q.contains("traduc") -> false
+            q.contains("modo experto") || q.contains("actuá como experto") -> false
+            q.contains("tutor") || q.contains("enseñame") -> false
             q.contains("bóveda") || q.contains("boveda") -> { openVault(context); true }
             q.contains("centro de control") -> { LixFeatureHub.show(context); true }
             q.contains("configuración") && q.contains("permis") -> {
