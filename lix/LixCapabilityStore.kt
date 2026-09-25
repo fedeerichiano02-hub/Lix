@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 
@@ -72,8 +73,13 @@ object LixCapabilityStore {
                 setOnClickListener { installOrToggle(context, capability) }
             })
         }
+        val scroll = ScrollView(context).apply {
+            isFillViewport = true
+            overScrollMode = ScrollView.OVER_SCROLL_IF_CONTENT_SCROLLS
+            addView(root, ScrollView.LayoutParams(-1, -2))
+        }
         AlertDialog.Builder(context)
-            .setView(root)
+            .setView(scroll)
             .setPositiveButton("Cerrar", null)
             .setNeutralButton("Actualizar catálogo") { _, _ ->
                 Thread {
