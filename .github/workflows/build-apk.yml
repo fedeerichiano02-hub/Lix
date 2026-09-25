@@ -1,5 +1,6 @@
 name: Build Lix APK
 # Stable build workflow
+# Force build for the latest optimization commit.
 
 on:
   workflow_dispatch:
