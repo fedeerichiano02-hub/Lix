@@ -52,6 +52,7 @@ jobs:
           cp lix/voice_interaction_service.xml build-app/app/src/main/res/xml/voice_interaction_service.xml
           python3 lix/apply_glass_ui.py
           python3 lix/mega_features_patch.py
+          python3 lix/optimization_patch.py
           python3 - <<'PY'
           from pathlib import Path
           p = Path("build-app/app/build.gradle.kts")
