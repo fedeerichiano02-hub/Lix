@@ -52,10 +52,21 @@ old_keyboard = '''        window.decorView.viewTreeObserver.addOnGlobalLayoutLis
             if (input.hasFocus()) scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
         }'''
 new_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())
             val keyboardOpen = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
             nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
-            if (keyboardOpen && input.hasFocus()) {
-                scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+
+            // Keep the composer physically above the keyboard. The user must always
+            // be able to see the text being typed; never leave the EditText behind IME.
+            if (keyboardOpen) {
+                composer.translationY = -ime.bottom.toFloat()
+                scroll.setPadding(0, 0, 0, dp(90))
+                if (input.hasFocus()) {
+                    scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                }
+            } else {
+                composer.translationY = 0f
+                scroll.setPadding(0, 0, 0, dp(90))
             }
             insets
         }
