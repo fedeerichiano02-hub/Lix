@@ -39,19 +39,13 @@ s = s.replace(
 s = s.replace('engine.sendUserPrompt(enriched)', 'engine.sendUserPrompt(enriched, 224)')
 s = s.replace('engine.sendUserPrompt(buildContextPrompt(query))', 'engine.sendUserPrompt(buildContextPrompt(query), 224)')
 
-# Stream less frequently to the UI, reducing Compose/View-style layout churn.
+# Stream less frequently to the UI, reducing layout churn.
 s = s.replace('now - lastUiUpdate >= 70L', 'now - lastUiUpdate >= 80L')
 
-# Keyboard: replace global-layout polling with AndroidX IME insets.
-old_keyboard = '''        window.decorView.viewTreeObserver.addOnGlobalLayoutListener {
-            val visible = android.graphics.Rect()
-            window.decorView.getWindowVisibleDisplayFrame(visible)
-            val keyboardHeight = window.decorView.rootView.height - visible.bottom
-            val keyboardOpen = keyboardHeight > dp(180)
-            nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
-            if (input.hasFocus()) scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
-        }'''
-new_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+# Keyboard: keep the composer in the resized window flow and apply only the
+# actual IME inset as bottom space. This keeps the EditText visible while typing
+# instead of translating it by the full inset on top of an already resized root.
+old_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())
             val keyboardOpen = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
             nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
@@ -71,8 +65,30 @@ new_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsLi
             insets
         }
         androidx.core.view.ViewCompat.requestApplyInsets(root)'''
-if old_keyboard in s:
-    s = s.replace(old_keyboard, new_keyboard)
+new_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val keyboardOpen = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
+            nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
+
+            // ADJUST_RESIZE already shrinks the root when the IME opens. Do not
+            // translate the composer by the full IME height (that would move it
+            // twice). Keep the composer as the last child so it stays visible
+            // above the keyboard and always scroll the conversation to its end.
+            composer.translationY = 0f
+            scroll.setPadding(0, 0, 0, dp(90))
+
+            if (keyboardOpen && input.hasFocus()) {
+                scroll.post {
+                    scroll.fullScroll(View.FOCUS_DOWN)
+                    input.requestLayout()
+                }
+            }
+            insets
+        }
+        androidx.core.view.ViewCompat.requestApplyInsets(root)'''
+
+if old_keyboard not in s:
+    raise SystemExit("Expected keyboard block not found; refusing to overwrite unexpectedly.")
+s = s.replace(old_keyboard, new_keyboard)
 
 main.write_text(s)
 
