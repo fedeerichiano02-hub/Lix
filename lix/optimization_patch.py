@@ -3,7 +3,6 @@ from pathlib import Path
 main = Path("build-app/app/src/main/java/com/example/llama/MainActivity.kt")
 s = main.read_text()
 
-# Remove duplicated conversation history from every native prompt.
 s = s.replace(
 '''            val recent = history.takeLast(8)
             if (recent.isNotEmpty()) {
@@ -17,8 +16,6 @@ s = s.replace(
 '''            // Conversation state is retained by the native engine; don't duplicate it.
 '''
 )
-
-# Compact external context before JNI/native inference.
 s = s.replace('append(memory.take(3500))', 'append(memory.takeLast(1400))')
 s = s.replace('append(learning.takeLast(3500))', 'append(learning.takeLast(1200))')
 s = s.replace('append(fileText.take(12000))', 'append(fileText.take(3500))')
@@ -27,24 +24,14 @@ s = s.replace(
     'val enriched = buildContextPrompt(prompt) + "\\n\\n" + LixStage1Core.modeContext(this)',
     'val enriched = (buildContextPrompt(prompt) + "\\n\\n" + LixStage1Core.modeContext(this)).take(7000)'
 )
-
-# Qwen3 direct-answer mode avoids spending generation time on hidden reasoning for
-# ordinary turns. The model's final answer remains streamed normally.
 s = s.replace(
     'append(prompt)\n            append("\\n\\nRespondé directamente en español argentino. No inventes datos.")',
     'append("/no_think\\n")\n            append(prompt)\n            append("\\n\\nRespondé directamente en español argentino. No inventes datos.")'
 )
-
-# Bounded generation: enough for normal answers, without long tail latency.
 s = s.replace('engine.sendUserPrompt(enriched)', 'engine.sendUserPrompt(enriched, 224)')
 s = s.replace('engine.sendUserPrompt(buildContextPrompt(query))', 'engine.sendUserPrompt(buildContextPrompt(query), 224)')
-
-# Stream less frequently to the UI, reducing layout churn.
 s = s.replace('now - lastUiUpdate >= 70L', 'now - lastUiUpdate >= 80L')
 
-# Keyboard: keep the composer in the resized window flow and apply only the
-# actual IME inset as bottom space. This keeps the EditText visible while typing
-# instead of translating it by the full inset on top of an already resized root.
 old_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())
             val keyboardOpen = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
@@ -70,9 +57,7 @@ new_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsLi
             nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
 
             // ADJUST_RESIZE already shrinks the root when the IME opens. Do not
-            // translate the composer by the full IME height (that would move it
-            // twice). Keep the composer as the last child so it stays visible
-            // above the keyboard and always scroll the conversation to its end.
+            // translate the composer by the full IME height a second time.
             composer.translationY = 0f
             scroll.setPadding(0, 0, 0, dp(90))
 
@@ -87,9 +72,8 @@ new_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsLi
         androidx.core.view.ViewCompat.requestApplyInsets(root)'''
 
 if old_keyboard not in s:
-    raise SystemExit("Expected keyboard block not found; refusing to overwrite unexpectedly.")
+    raise SystemExit("Expected keyboard block not found")
 s = s.replace(old_keyboard, new_keyboard)
-
 main.write_text(s)
 
 stage = Path("build-app/app/src/main/java/com/example/llama/LixStage1Core.kt")
