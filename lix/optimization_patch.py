@@ -37,7 +37,44 @@ s = s.replace('engine.sendUserPrompt(enriched)', 'engine.sendUserPrompt(enriched
 s = s.replace('engine.sendUserPrompt(buildContextPrompt(query))', 'engine.sendUserPrompt(buildContextPrompt(query), 192)')
 
 # Reduce UI churn while preserving streaming.
-s = s.replace('now - lastUiUpdate >= 70L', 'now - lastUiUpdate >= 120L')
+s = s.replace('now - lastUiUpdate >= 70L', 'now - lastUiUpdate >= 80L')
+
+# Keyboard: replace the expensive global-layout polling with AndroidX IME insets.
+const old_keyboard = '''        window.decorView.viewTreeObserver.addOnGlobalLayoutListener {
+            val visible = android.graphics.Rect()
+            window.decorView.getWindowVisibleDisplayFrame(visible)
+            val keyboardHeight = window.decorView.rootView.height - visible.bottom
+            val keyboardOpen = keyboardHeight > dp(180)
+            nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
+            if (input.hasFocus()) scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+        }'''
+const new_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val keyboardOpen = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
+            nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
+            if (keyboardOpen && input.hasFocus()) {
+                scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+            }
+            insets
+        }
+        androidx.core.view.ViewCompat.requestApplyInsets(root)'''
+if old_keyboard not in s:
+    raise SystemExit("keyboard callback not found")
+s=s.replace(old_keyboard,new_keyboard)
+
+# Slightly longer output than the previous build, while keeping latency bounded.
+s=s.replace('engine.sendUserPrompt(enriched, 192)', 'engine.sendUserPrompt(enriched, 224)')
+s=s.replace('engine.sendUserPrompt(buildContextPrompt(query), 192)', 'engine.sendUserPrompt(buildContextPrompt(query), 224)')
+
+# Reduce native prompt prefill further without cutting the model response itself.
+s=s.replace('val enriched = (buildContextPrompt(prompt) + "\\n\\n" + LixStage1Core.modeContext(this)).take(8500)',
+'''val enriched = (buildContextPrompt(prompt) + "\\n\\n" + LixStage1Core.modeContext(this)).take(7000)''')
+
+cpp = Path("build-app/lib/src/main/cpp/ai_chat.cpp")
+s = cpp.read_text()
+s = s.replace('constexpr int   N_THREADS_MAX          = 2;', 'constexpr int   N_THREADS_MAX          = 4;')
+s = s.replace('constexpr int   BATCH_SIZE              = 128;', 'constexpr int   BATCH_SIZE              = 256;')
+cpp.write_text(s)
+
 
 main.write_text(s)
 
