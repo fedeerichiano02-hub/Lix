@@ -52,7 +52,6 @@ jobs:
           cp lix/voice_interaction_service.xml build-app/app/src/main/res/xml/voice_interaction_service.xml
           python3 lix/apply_glass_ui.py
           python3 lix/mega_features_patch.py
-          python3 lix/optimization_patch.py
           python3 - <<'PY'
           from pathlib import Path
           p = Path("build-app/app/build.gradle.kts")
@@ -74,6 +73,7 @@ jobs:
           sed -i 's/constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;/constexpr int   DEFAULT_CONTEXT_SIZE    = 2048;/' build-app/lib/src/main/cpp/ai_chat.cpp
           sed -i 's/constexpr int   BATCH_SIZE              = 512;/constexpr int   BATCH_SIZE              = 128;/' build-app/lib/src/main/cpp/ai_chat.cpp
           sed -i 's/constexpr int   N_THREADS_MAX          = 4;/constexpr int   N_THREADS_MAX          = 2;/' build-app/lib/src/main/cpp/ai_chat.cpp
+          python3 lix/optimization_patch.py
           python3 lix/patch_android_abi.py
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
           cp lix/AndroidManifest.xml build-app/app/src/main/AndroidManifest.xml
