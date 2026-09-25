@@ -806,6 +806,7 @@ class MainActivity : AppCompatActivity() {
             }
             "settings" -> {
                 val items = arrayOf(
+                    "Capacidades instalables" to "Elegí qué funciones querés agregar y activar en Lix." to "🧩",
                     "Tema visual" to "Colores, estilo y apariencia." to "◉",
                     "Voz de Lix" to "Activación, conversación continua y voz." to "≋",
                     "Modelo de IA" to "Qwen local y procesamiento en el dispositivo." to "▦",
@@ -821,6 +822,8 @@ class MainActivity : AppCompatActivity() {
                     val card = screenCard(item.first.first, item.first.second, item.second)
                     card.setOnClickListener {
                         when (item.first.first) {
+                            "Capacidades instalables" -> LixCapabilityStore.show(this)
+                            "Actualizaciones" -> showEvolution()
                             "Voz de Lix" -> {
                                 wakeServiceEnabled = !wakeServiceEnabled
                                 prefs.edit().putBoolean("wake_enabled", wakeServiceEnabled).apply()
