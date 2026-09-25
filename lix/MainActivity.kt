@@ -439,6 +439,11 @@ class MainActivity : AppCompatActivity() {
         val prompt = input.text.toString().trim()
         if (prompt.isEmpty() || !ready) return
 
+        if (LixStage1Core.handle(this, prompt)) {
+            input.setText("")
+            return
+        }
+
         if (LixMegaModules.handle(this, prompt)) {
             input.setText("")
             return
@@ -455,6 +460,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (prompt.startsWith("Recordá esto:", true)) {
+            LixStage1Core.remember(this, prompt.substringAfter(":").trim(), "chat")
             remember(prompt.substringAfter(":").trim())
             addMessage("VOS", prompt)
             addMessage("LIX", "Listo, compa. Lo guardé en la memoria de Lix.")
@@ -487,7 +493,7 @@ class MainActivity : AppCompatActivity() {
         history.add("VOS" to prompt)
         saveHistory()
 
-        val enriched = buildContextPrompt(prompt)
+        val enriched = buildContextPrompt(prompt) + "\n\n" + LixStage1Core.modeContext(this)
         selectedFileText = null
 
         val answer = TextView(this).apply {
