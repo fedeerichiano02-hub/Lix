@@ -62,6 +62,4 @@ s = s.replace(
     'constexpr int   BATCH_SIZE              = 256;'
 )
 needle = 'ctx_params.n_threads_batch = n_threads;'
-if needle in s and 'ctx_params.flash_attn = true;' not in s:
-    s = s.replace(needle, needle + '\n    ctx_params.flash_attn = true;')
 cpp.write_text(s)
