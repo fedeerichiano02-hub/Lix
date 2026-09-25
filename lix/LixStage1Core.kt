@@ -1,5 +1,6 @@
 package com.example.llama
 
+import android.app.ActivityManager
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
@@ -143,14 +144,15 @@ object LixStage1Core {
 
     private fun showTaskPlan(c: Context, task: String) {
         val clean = task.ifBlank { "tarea sin descripción" }
-        val steps = mutableListOf<String>()
-        steps += "Entender el objetivo: " + clean.take(180)
-        steps += "Separar requisitos y restricciones."
-        steps += "Identificar herramientas y archivos necesarios."
-        steps += "Ejecutar el primer bloque verificable."
-        steps += "Comprobar el resultado y detectar errores."
-        steps += "Corregir lo necesario."
-        steps += "Entregar un resumen de lo realizado."
+        val steps = listOf(
+            "Entender el objetivo: " + clean.take(180),
+            "Separar requisitos y restricciones.",
+            "Identificar herramientas y archivos necesarios.",
+            "Ejecutar el primer bloque verificable.",
+            "Comprobar el resultado y detectar errores.",
+            "Corregir lo necesario.",
+            "Entregar un resumen de lo realizado."
+        )
         val body = steps.mapIndexed { i, s -> (i + 1).toString() + ". " + s }.joinToString("\n")
         AlertDialog.Builder(c).setTitle("🤖 Plan de tarea").setMessage(body)
             .setPositiveButton("Usar este plan") { _, _ -> toast(c, "Plan preparado; Lix puede continuar la tarea desde el chat.") }
@@ -158,8 +160,9 @@ object LixStage1Core {
     }
 
     private fun showDiagnostics(c: Context) {
-        val dm = c.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-        val info = dm.memoryInfo
+        val dm = c.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        dm.getMemoryInfo(info)
         val stat = StatFs(c.filesDir.absolutePath)
         val free = stat.availableBytes / (1024L * 1024L)
         val total = stat.totalBytes / (1024L * 1024L)
