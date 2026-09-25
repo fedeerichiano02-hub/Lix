@@ -38,6 +38,12 @@ object LixFeatureHub {
             setPadding(24, 20, 24, 20)
         }
         root.addView(TextView(context).apply {
+            text = "🧬 TIENDA DE CAPACIDADES — instalar funciones"
+            textSize = 15f
+            setPadding(18, 14, 18, 14)
+            setOnClickListener { LixCapabilityStore.show(context) }
+        })
+        root.addView(TextView(context).apply {
             text = "CENTRO DE CONTROL DE LIX"
             textSize = 20f
             gravity = Gravity.CENTER
