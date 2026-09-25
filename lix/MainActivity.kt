@@ -735,8 +735,12 @@ class MainActivity : AppCompatActivity() {
         header.addView(TextView(this).apply { text = "⋮"; textSize = 24f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(dp(30), dp(48)))
         root.addView(header)
         val bodyScroll = ScrollView(this).apply {
-            isFillViewport = true
-            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            isFillViewport = false
+            isSmoothScrollingEnabled = true
+            isVerticalScrollBarEnabled = true
+            clipToPadding = false
+            setPadding(0, 0, 0, dp(28))
+            overScrollMode = View.OVER_SCROLL_ALWAYS
             addView(body, ScrollView.LayoutParams(-1, -2))
         }
         root.addView(bodyScroll, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -744,6 +748,11 @@ class MainActivity : AppCompatActivity() {
         dialog.setCanceledOnTouchOutside(true)
         dialog.show()
         dialog.window?.setLayout((resources.displayMetrics.widthPixels * .96f).toInt(), -1)
+        dialog.window?.decorView?.setOnApplyWindowInsetsListener { view, insets ->
+            view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, insets.systemWindowInsetBottom + dp(8))
+            insets
+        }
+        bodyScroll.post { bodyScroll.requestLayout() }
         return dialog
     }
 
