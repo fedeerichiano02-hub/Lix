@@ -734,7 +734,12 @@ class MainActivity : AppCompatActivity() {
         header.addView(titles, LinearLayout.LayoutParams(0, dp(48), 1f))
         header.addView(TextView(this).apply { text = "⋮"; textSize = 24f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(dp(30), dp(48)))
         root.addView(header)
-        root.addView(body, LinearLayout.LayoutParams(-1, 0, 1f))
+        val bodyScroll = ScrollView(this).apply {
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            addView(body, ScrollView.LayoutParams(-1, -2))
+        }
+        root.addView(bodyScroll, LinearLayout.LayoutParams(-1, 0, 1f))
         dialog.setContentView(root)
         dialog.setCanceledOnTouchOutside(true)
         dialog.show()
