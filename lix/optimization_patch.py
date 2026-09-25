@@ -32,35 +32,19 @@ s = s.replace('engine.sendUserPrompt(enriched)', 'engine.sendUserPrompt(enriched
 s = s.replace('engine.sendUserPrompt(buildContextPrompt(query))', 'engine.sendUserPrompt(buildContextPrompt(query), 224)')
 s = s.replace('now - lastUiUpdate >= 70L', 'now - lastUiUpdate >= 80L')
 
-old_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
-            val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())
-            val keyboardOpen = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
+old_keyboard = '''        window.decorView.viewTreeObserver.addOnGlobalLayoutListener {
+            val visible = android.graphics.Rect()
+            window.decorView.getWindowVisibleDisplayFrame(visible)
+            val keyboardHeight = window.decorView.rootView.height - visible.bottom
+            val keyboardOpen = keyboardHeight > dp(180)
             nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
-
-            // Keep the composer physically above the keyboard. The user must always
-            // be able to see the text being typed; never leave the EditText behind IME.
-            if (keyboardOpen) {
-                composer.translationY = -ime.bottom.toFloat()
-                scroll.setPadding(0, 0, 0, dp(90))
-                if (input.hasFocus()) {
-                    scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
-                }
-            } else {
-                composer.translationY = 0f
-                scroll.setPadding(0, 0, 0, dp(90))
-            }
-            insets
-        }
-        androidx.core.view.ViewCompat.requestApplyInsets(root)'''
+            if (input.hasFocus()) scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+        }'''
 new_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val keyboardOpen = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
             nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
-
-            // ADJUST_RESIZE already shrinks the root when the IME opens. Do not
-            // translate the composer by the full IME height a second time.
             composer.translationY = 0f
             scroll.setPadding(0, 0, 0, dp(90))
-
             if (keyboardOpen && input.hasFocus()) {
                 scroll.post {
                     scroll.fullScroll(View.FOCUS_DOWN)
@@ -69,11 +53,9 @@ new_keyboard = '''        androidx.core.view.ViewCompat.setOnApplyWindowInsetsLi
             }
             insets
         }
-        androidx.core.view.ViewCompat.requestApplyInsets(root)'''
+        androidx.core.view.ViewCompat.requestApplyInsets(root)
+        '''
 
-if old_keyboard not in s:
-    raise SystemExit("Expected keyboard block not found")
-s = s.replace(old_keyboard, new_keyboard)
 main.write_text(s)
 
 stage = Path("build-app/app/src/main/java/com/example/llama/LixStage1Core.kt")
