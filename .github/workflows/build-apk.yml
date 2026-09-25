@@ -47,6 +47,7 @@ jobs:
           cp lix/LixFeatureRuntime.kt build-app/app/src/main/java/com/example/llama/LixFeatureRuntime.kt
           cp lix/LixMegaModules.kt build-app/app/src/main/java/com/example/llama/LixMegaModules.kt
           cp lix/LixStage1Core.kt build-app/app/src/main/java/com/example/llama/LixStage1Core.kt
+          cp lix/LixCapabilityStore.kt build-app/app/src/main/java/com/example/llama/LixCapabilityStore.kt
           cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
           mkdir -p build-app/app/src/main/res/xml
           cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/accessibility_service_config.xml
