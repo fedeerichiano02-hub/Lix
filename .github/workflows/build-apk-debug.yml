@@ -78,3 +78,4 @@ jobs:
           path: /tmp/lix-gradle.log
           if-no-files-found: warn
           compression-level: 0
+# Triggered by ChatGPT to start the APK build.
