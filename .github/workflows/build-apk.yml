@@ -111,12 +111,13 @@ jobs:
       - name: Deep verify APK for Android installer
         run: |
           APK=build-app/dist/Lix.apk
+          test -f "$APK"
           file "$APK"
           unzip -t "$APK" >/tmp/lix_unzip_test.txt
           tail -n 3 /tmp/lix_unzip_test.txt
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" | head -n 25
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
-          unzip -l "$APK" | grep -E 'lib/[^/]+/.*\\.(so)$' | head -n 40 || true
+          unzip -l "$APK" | grep -E 'lib/[^/]+/.*\.(so)$' | head -n 40 || true
           stat -c '%s' "$APK"
 
       - name: Upload complete APK
