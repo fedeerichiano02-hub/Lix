@@ -29,55 +29,27 @@ jobs:
 
       - name: Prepare llama.cpp source tree
         run: |
+          set -euxo pipefail
           rm -rf build-app
           cp -a llama.cpp/examples/llama.android/. build-app
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
           sed -i 's/\.toDrawable()//g' build-app/app/src/main/java/com/example/llama/MainActivity.kt
           for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
           cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
-          mkdir -p build-app/app/src/main/res/xml
+          mkdir -p build-app/app/src/main/res/xml build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/accessibility_service_config.xml
           cp lix/voice_interaction_service.xml build-app/app/src/main/res/xml/voice_interaction_service.xml
           python3 lix/apply_glass_ui.py
           python3 lix/mega_features_patch.py
           python3 lix/integrate_godot_agent.py
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("build-app/app/build.gradle.kts")
-          s = p.read_text()
-          deps = [
-              '    implementation("com.google.mlkit:text-recognition:16.0.1")',
-              '    implementation("com.google.mlkit:image-labeling:17.0.9")'
-          ]
-          missing = [d for d in deps if d not in s]
-          if missing:
-              s = s.replace("dependencies {", "dependencies {\n" + "\n".join(missing), 1)
-          s = s.replace('applicationId = "com.example.llama.aichat"', 'applicationId = "com.lix.ai"')
-          s = s.replace('ndk { abiFilters += listOf("arm64-v8a") }', '')
-          anchor = '        vectorDrawables {\n'
-          if 'abiFilters += listOf("arm64-v8a")' not in s:
-              s = s.replace(anchor, '        ndk { abiFilters += listOf("arm64-v8a") }\n' + anchor, 1)
-          s = s.replace('versionCode = 1', 'versionCode = ${{ github.run_number }}')
-          s = s.replace('versionName = "1.0"', 'versionName = "2.0.${{ github.run_number }}"')
-          p.write_text(s)
-          PY
-
-          p = Path("build-app/lib/build.gradle.kts")
-          s = p.read_text()
-          s = s.replace('abiFilters += listOf("arm64-v8a", "x86_64")', 'abiFilters += listOf("arm64-v8a")')
-          s = s.replace('abiFilters += listOf("x86_64")', 'abiFilters += listOf("arm64-v8a")')
-          s = s.replace('-DGGML_CPU_ALL_VARIANTS=ON', '-DGGML_CPU_ALL_VARIANTS=OFF')
-          p.write_text(s)
-
+          python3 lix/prepare_build.py
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
           sed -i 's/constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;/constexpr int   DEFAULT_CONTEXT_SIZE    = 4096;/' build-app/lib/src/main/cpp/ai_chat.cpp
           sed -i 's/constexpr int   BATCH_SIZE              = 512;/constexpr int   BATCH_SIZE              = 256;/' build-app/lib/src/main/cpp/ai_chat.cpp
           cp lix/AndroidManifest.xml build-app/app/src/main/AndroidManifest.xml
-          mkdir -p build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           sudo apt-get update
           sudo apt-get install -y imagemagick
           convert lix/lix_icon.svg -resize 512x512 build-app/app/src/main/res/drawable/lix_icon.png
-
           echo '=== FINAL ABI CONFIG ==='
           grep -n 'abiFilters\|GGML_CPU_ALL_VARIANTS' build-app/app/build.gradle.kts build-app/lib/build.gradle.kts || true
 
