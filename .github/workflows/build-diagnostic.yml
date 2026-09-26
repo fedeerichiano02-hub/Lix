@@ -1,0 +1,46 @@
+name: Lix Build Diagnostic
+on:
+  workflow_dispatch:
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0 ndk;29.0.13113456 cmake;3.31.6'
+      - name: Run current build and preserve complete log
+        shell: bash
+        run: |
+          set +e
+          git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
+          rm -rf build-app
+          cp -a llama.cpp/examples/llama.android/. build-app
+          python3 lix/apply_glass_ui.py
+          python3 lix/mega_features_patch.py
+          python3 lix/integrate_godot_agent.py > /tmp/prepare.log 2>&1
+          PREP=$?
+          cat /tmp/prepare.log
+          if [ $PREP -ne 0 ]; then exit $PREP; fi
+          cd build-app
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log
+          BUILD=${PIPESTATUS[0]}
+          echo "BUILD_EXIT=$BUILD"
+          echo "===== LAST 300 LINES ====="
+          tail -n 300 /tmp/gradle.log
+          exit $BUILD
+      - name: Upload diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lix-build-diagnostic-${{ github.run_number }}
+          path: |
+            /tmp/prepare.log
+            /tmp/gradle.log
+          if-no-files-found: warn
