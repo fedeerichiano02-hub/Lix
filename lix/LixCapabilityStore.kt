@@ -76,7 +76,7 @@ object LixCapabilityStore {
         val scroll = ScrollView(context).apply {
             isFillViewport = true
             overScrollMode = ScrollView.OVER_SCROLL_IF_CONTENT_SCROLLS
-            addView(root, android.view.ViewGroup.android.view.ViewGroup.LayoutParams(-1, -2))
+            addView(root, android.view.ViewGroup.LayoutParams(-1, -2))
         }
         AlertDialog.Builder(context)
             .setView(scroll)
