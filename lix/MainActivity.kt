@@ -209,7 +209,7 @@ class MainActivity : AppCompatActivity() {
                 Color.argb(210, 67, 157, 255))
         }
         greeting.addView(bubble, LinearLayout.LayoutParams(0, dp(118), 1f))
-        chat.addView(greeting, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(18) })
+        chat.addView(greeting, LinearLayout.android.view.ViewGroup.LayoutParams(-1, -2).apply { bottomMargin = dp(18) })
 
         val actions = arrayOf(
             "⌕   Buscar en Internet",
@@ -504,7 +504,7 @@ class MainActivity : AppCompatActivity() {
             background = rounded(panel2, 14, border)
         }
 
-        chat.addView(answer, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+        chat.addView(answer, LinearLayout.android.view.ViewGroup.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
 
         generation = lifecycleScope.launch(Dispatchers.Default) {
@@ -563,7 +563,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        chat.addView(bubble, LinearLayout.LayoutParams(-1, -2).apply {
+        chat.addView(bubble, LinearLayout.android.view.ViewGroup.LayoutParams(-1, -2).apply {
             bottomMargin = dp(10)
         })
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
@@ -744,7 +744,7 @@ class MainActivity : AppCompatActivity() {
             overScrollMode = View.OVER_SCROLL_ALWAYS
             isClickable = true
             isFocusable = true
-            addView(body, ScrollView.LayoutParams(-1, -2))
+            addView(body, android.view.ViewGroup.android.view.ViewGroup.LayoutParams(-1, -2))
             setOnTouchListener { view, event ->
                 view.parent?.requestDisallowInterceptTouchEvent(true)
                 false
@@ -1063,7 +1063,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(16), dp(14), dp(16), dp(14))
             background = rounded(panel2, 14, border)
         }
-        chat.addView(answer, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+        chat.addView(answer, LinearLayout.android.view.ViewGroup.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
 
         generation = lifecycleScope.launch(Dispatchers.IO) {
