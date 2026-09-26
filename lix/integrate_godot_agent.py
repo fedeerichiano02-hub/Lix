@@ -1,17 +1,17 @@
 from pathlib import Path
 
-p = Path('build-app/app/src/main/java/com/example/llama/MainActivity.kt')
-s = p.read_text()
+main = Path("build-app/app/src/main/java/com/example/llama/MainActivity.kt")
+s = main.read_text()
 
 hook = '        if (LixGodotAgent.shouldHandle(prompt)) { runGodotAgent(prompt); input.setText(""); return }\n'
 needle = '        if (LixStage1Core.handle(this, prompt)) { input.setText(""); return }'
 if hook not in s:
     if needle not in s:
-        raise SystemExit('sendMessage hook point not found')
+        raise SystemExit("sendMessage hook point not found")
     s = s.replace(needle, hook + needle, 1)
 
 marker = '    private fun searchInternetAndAnswer(query: String) {'
-method = r'''    private fun runGodotAgent(prompt: String) {
+method = '''    private fun runGodotAgent(prompt: String) {
         val answer = TextView(this).apply {
             text = "Lix está trabajando en el proyecto Godot..."
             textSize = 15f
@@ -51,16 +51,14 @@ method = r'''    private fun runGodotAgent(prompt: String) {
 '''
 if 'private fun runGodotAgent(prompt: String)' not in s:
     if marker not in s:
-        raise SystemExit('method insertion marker not found')
+        raise SystemExit("method insertion marker not found")
     s = s.replace(marker, method + marker, 1)
-p.write_text(s)
+main.write_text(s)
 
-# Ensure the new agent is copied into the Android project.
-workflow = Path('.github/workflows/build-apk.yml')
+workflow = Path(".github/workflows/build-apk.yml")
 w = workflow.read_text()
 old = 'for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done'
 new = 'for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done'
 if old in w and new not in w:
     w = w.replace(old, new, 1)
 workflow.write_text(w)
-'''
