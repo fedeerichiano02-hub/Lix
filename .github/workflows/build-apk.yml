@@ -1,5 +1,4 @@
 name: Build Lix APK
-# Stable build workflow focused on Godot project integration.
 
 on:
   workflow_dispatch:
@@ -53,28 +52,33 @@ jobs:
           missing = [d for d in deps if d not in s]
           if missing:
               s = s.replace("dependencies {", "dependencies {\n" + "\n".join(missing), 1)
-              p.write_text(s)
-          PY
+          s = s.replace('applicationId = "com.example.llama.aichat"', 'applicationId = "com.lix.ai"')
+          s = s.replace('ndk { abiFilters += listOf("arm64-v8a") }', '')
+          anchor = '        vectorDrawables {\n'
+          if 'abiFilters += listOf("arm64-v8a")' not in s:
+              s = s.replace(anchor, '        ndk { abiFilters += listOf("arm64-v8a") }\n' + anchor, 1)
+          s = s.replace('versionCode = 1', 'versionCode = ${{ github.run_number }}')
+          s = s.replace('versionName = "1.0"', 'versionName = "2.0.${{ github.run_number }}"')
+          p.write_text(s)
 
-          # Force a single supported 64-bit Android ABI everywhere in the generated project.
-          grep -RIl 'armeabi-v7a' build-app | xargs -r sed -i 's/armeabi-v7a/arm64-v8a/g'
-          grep -RIl 'x86_64\|x86' build-app/lib build-app/app 2>/dev/null | xargs -r sed -i -E 's/"x86_64"/"arm64-v8a"/g; s/"x86"/"arm64-v8a"/g'
+          p = Path("build-app/lib/build.gradle.kts")
+          s = p.read_text()
+          s = s.replace('abiFilters += listOf("arm64-v8a", "x86_64")', 'abiFilters += listOf("arm64-v8a")')
+          s = s.replace('abiFilters += listOf("x86_64")', 'abiFilters += listOf("arm64-v8a")')
+          s = s.replace('-DGGML_CPU_ALL_VARIANTS=ON', '-DGGML_CPU_ALL_VARIANTS=OFF')
+          p.write_text(s)
+
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
-          sed -i '/abiFilters/d' build-app/app/build.gradle.kts
-          sed -i '/abiFilters/d' build-app/lib/build.gradle.kts
-          sed -i '/minSdk = 33/a\        ndk { abiFilters += listOf("arm64-v8a") }' build-app/app/build.gradle.kts
-          sed -i '/android {/a\    defaultConfig { ndk { abiFilters += listOf("arm64-v8a") } }' build-app/lib/build.gradle.kts
-          sed -i 's/-DGGML_CPU_ALL_VARIANTS=ON/-DGGML_CPU_ALL_VARIANTS=OFF/' build-app/lib/build.gradle.kts
-          # Godot mode prioritizes reliable project context and code quality over shrinking the local model.
           sed -i 's/constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;/constexpr int   DEFAULT_CONTEXT_SIZE    = 4096;/' build-app/lib/src/main/cpp/ai_chat.cpp
           sed -i 's/constexpr int   BATCH_SIZE              = 512;/constexpr int   BATCH_SIZE              = 256;/' build-app/lib/src/main/cpp/ai_chat.cpp
-          sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
           cp lix/AndroidManifest.xml build-app/app/src/main/AndroidManifest.xml
-          sed -i '/defaultConfig {/a\        versionCode = ${{ github.run_number }}\n        versionName = "2.0.${{ github.run_number }}"' build-app/app/build.gradle.kts
           mkdir -p build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           sudo apt-get update
           sudo apt-get install -y imagemagick
           convert lix/lix_icon.svg -resize 512x512 build-app/app/src/main/res/drawable/lix_icon.png
+
+          echo '=== FINAL ABI CONFIG ==='
+          grep -n 'abiFilters\|GGML_CPU_ALL_VARIANTS' build-app/app/build.gradle.kts build-app/lib/build.gradle.kts || true
 
       - name: Download Qwen3 Godot
         run: |
@@ -87,7 +91,7 @@ jobs:
           ANDROID_ABI: arm64-v8a
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew clean assembleDebug --no-daemon --stacktrace --info
 
       - name: Prepare APK artifact
         run: |
@@ -101,26 +105,18 @@ jobs:
         run: |
           APK=build-app/dist/Lix.apk
           test -f "$APK"
-          echo "Final Lix APK size:"
-          ls -lh "$APK"
-          echo "Final Lix APK SHA-256:"
           sha256sum "$APK"
+          ls -lh "$APK"
 
       - name: Deep verify APK for Android installer
         run: |
           APK=build-app/dist/Lix.apk
-          echo "=== APK FILE ==="
           file "$APK"
-          echo "=== ZIP TEST ==="
           unzip -t "$APK" >/tmp/lix_unzip_test.txt
           tail -n 3 /tmp/lix_unzip_test.txt
-          echo "=== PACKAGE METADATA ==="
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" | head -n 25
-          echo "=== SIGNATURE ==="
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
-          echo "=== NATIVE LIBRARIES ==="
           unzip -l "$APK" | grep -E 'lib/[^/]+/.*\\.(so)$' | head -n 40 || true
-          echo "=== APK SIZE BYTES ==="
           stat -c '%s' "$APK"
 
       - name: Upload complete APK
