@@ -49,6 +49,15 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew clean assembleDebug --no-daemon --stacktrace --info 2>&1 | tee /tmp/lix-gradle.log
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          APK=$(find build-app/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)
+          test -n "$APK"
+          test -s "$APK"
+          file "$APK"
+          sha256sum "$APK"
+          unzip -t "$APK" >/dev/null
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
