@@ -60,6 +60,7 @@ jobs:
           s = s.replace('versionCode = 1', 'versionCode = ${{ github.run_number }}')
           s = s.replace('versionName = "1.0"', 'versionName = "2.0.${{ github.run_number }}"')
           p.write_text(s)
+          PY
 
           p = Path("build-app/lib/build.gradle.kts")
           s = p.read_text()
