@@ -49,15 +49,19 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew clean assembleDebug --no-daemon --stacktrace --info 2>&1 | tee /tmp/lix-gradle.log
-      - name: Verify APK
+      - name: Stage APK
         run: |
           set -euxo pipefail
+          rm -rf dist
+          mkdir -p dist
           APK=$(find build-app/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)
           test -n "$APK"
-          test -s "$APK"
-          file "$APK"
-          sha256sum "$APK"
-          unzip -t "$APK" >/dev/null
+          cp "$APK" dist/Lix.apk
+          test -s dist/Lix.apk
+          file dist/Lix.apk
+          sha256sum dist/Lix.apk
+          unzip -t dist/Lix.apk >/dev/null
+          ls -lh dist/Lix.apk
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -65,10 +69,13 @@ jobs:
           name: Lix-debug-${{ github.run_number }}
           path: /tmp/lix-gradle.log
           if-no-files-found: warn
+          compression-level: 0
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Lix-APK-Godot-${{ github.run_number }}
-          path: build-app/app/build/outputs/apk/debug/*.apk
+          path: dist/Lix.apk
           if-no-files-found: error
+          compression-level: 0
+          overwrite: true
