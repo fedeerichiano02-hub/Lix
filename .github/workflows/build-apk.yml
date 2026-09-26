@@ -34,6 +34,7 @@ jobs:
           rm -rf build-app
           cp -a llama.cpp/examples/llama.android/. build-app/
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
+          sed -i 's/\.toDrawable()//g' build-app/app/src/main/java/com/example/llama/MainActivity.kt
           cp lix/LixAutomation.kt build-app/app/src/main/java/com/example/llama/LixAutomation.kt
           cp lix/LixAccessibilityService.kt build-app/app/src/main/java/com/example/llama/LixAccessibilityService.kt
           cp lix/LixWakeService.kt build-app/app/src/main/java/com/example/llama/LixWakeService.kt
