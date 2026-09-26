@@ -56,8 +56,8 @@ jobs:
               p.write_text(s)
           PY
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
-          sed -i '/minSdk = 33/a\        ndk { abiFilters += listOf("armeabi-v7a") }' build-app/app/build.gradle.kts
-          sed -i '/abiFilters += listOf/c\             abiFilters += listOf("armeabi-v7a")' build-app/lib/build.gradle.kts
+          sed -i '/minSdk = 33/a\        ndk { abiFilters += listOf("arm64-v8a") }' build-app/app/build.gradle.kts
+          sed -i '/abiFilters += listOf/c\             abiFilters += listOf("arm64-v8a")' build-app/lib/build.gradle.kts
           sed -i 's/-DGGML_CPU_ALL_VARIANTS=ON/-DGGML_CPU_ALL_VARIANTS=OFF/' build-app/lib/build.gradle.kts
           # Godot mode prioritizes reliable project context and code quality over shrinking the local model.
           sed -i 's/constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;/constexpr int   DEFAULT_CONTEXT_SIZE    = 4096;/' build-app/lib/src/main/cpp/ai_chat.cpp
