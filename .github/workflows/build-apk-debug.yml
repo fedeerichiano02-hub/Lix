@@ -82,3 +82,5 @@ jobs:
           path: dist/Lix.apk
           if-no-files-found: warn
           compression-level: 0
+
+# Automatic push-triggered build
