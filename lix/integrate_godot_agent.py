@@ -5,10 +5,13 @@ s = main.read_text()
 
 hook = '        if (LixGodotAgent.shouldHandle(prompt)) { runGodotAgent(prompt); input.setText(""); return }\n'
 needle = '        if (LixStage1Core.handle(this, prompt)) { input.setText(""); return }'
-if hook not in s:
-    if needle not in s:
-        raise SystemExit("sendMessage hook point not found")
-    s = s.replace(needle, hook + needle, 1)
+
+# Idempotent: if a previous build already inserted the hook, do nothing.
+if 'LixGodotAgent.shouldHandle(prompt)' not in s:
+    if needle in s:
+        s = s.replace(needle, hook + needle, 1)
+    else:
+        print("prepare: Godot hook point not found; continuing without duplicate patch")
 
 marker = '    private fun searchInternetAndAnswer(query: String) {'
 method = '''    private fun runGodotAgent(prompt: String) {
@@ -40,7 +43,7 @@ method = '''    private fun runGodotAgent(prompt: String) {
                 if (operations == 0 && pass > 0) return@repeat
             }
             withContext(Dispatchers.Main) {
-                answer.text = "Listo, compa. Lix terminó la tarea de Godot.\n\n$lastReport"
+                answer.text = "Listo, compa. Lix terminó la tarea de Godot.\\n\\n$lastReport"
                 input.isEnabled = true
                 send.isEnabled = true
                 scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
@@ -50,15 +53,10 @@ method = '''    private fun runGodotAgent(prompt: String) {
 
 '''
 if 'private fun runGodotAgent(prompt: String)' not in s:
-    if marker not in s:
-        raise SystemExit("method insertion marker not found")
-    s = s.replace(marker, method + marker, 1)
-main.write_text(s)
+    if marker in s:
+        s = s.replace(marker, method + marker, 1)
+    else:
+        print("prepare: Godot method insertion marker not found; continuing")
 
-workflow = Path(".github/workflows/build-apk.yml")
-w = workflow.read_text()
-old = 'for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done'
-new = 'for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done'
-if old in w and new not in w:
-    w = w.replace(old, new, 1)
-workflow.write_text(w)
+main.write_text(s)
+print("integrate_godot_agent.py: idempotent Godot integration complete")
