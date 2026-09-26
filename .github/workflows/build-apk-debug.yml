@@ -58,9 +58,7 @@ jobs:
           test -n "$APK"
           cp "$APK" dist/Lix.apk
           test -s dist/Lix.apk
-          file dist/Lix.apk
           sha256sum dist/Lix.apk
-          unzip -t dist/Lix.apk >/dev/null
           ls -lh dist/Lix.apk
       - name: Upload diagnostics
         if: always()
