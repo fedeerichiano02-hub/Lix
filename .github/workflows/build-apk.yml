@@ -32,7 +32,7 @@ jobs:
       - name: Prepare llama.cpp source tree
         run: |
           rm -rf build-app
-          cp -a llama.cpp/examples/llama.android/. build-app/
+          cp -a llama.cpp/examples/llama.android/. build-app
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
           sed -i 's/\.toDrawable()//g' build-app/app/src/main/java/com/example/llama/MainActivity.kt
           cp lix/LixAutomation.kt build-app/app/src/main/java/com/example/llama/LixAutomation.kt
@@ -72,10 +72,10 @@ jobs:
           sed -i '/minSdk = 33/a\        ndk { abiFilters += listOf("armeabi-v7a") }' build-app/app/build.gradle.kts
           sed -i '/abiFilters += listOf/c\             abiFilters += listOf("armeabi-v7a")' build-app/lib/build.gradle.kts
           sed -i 's/-DGGML_CPU_ALL_VARIANTS=ON/-DGGML_CPU_ALL_VARIANTS=OFF/' build-app/lib/build.gradle.kts
-          # POCO C65 es ARM 32-bit: reducir memoria de contexto/batch para que prepare() pueda reservar recursos dentro del espacio de direcciones 32-bit.
-          sed -i 's/constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;/constexpr int   DEFAULT_CONTEXT_SIZE    = 2048;/' build-app/lib/src/main/cpp/ai_chat.cpp
-          sed -i 's/constexpr int   BATCH_SIZE              = 512;/constexpr int   BATCH_SIZE              = 128;/' build-app/lib/src/main/cpp/ai_chat.cpp
-          sed -i 's/constexpr int   N_THREADS_MAX          = 4;/constexpr int   N_THREADS_MAX          = 2;/' build-app/lib/src/main/cpp/ai_chat.cpp
+          # POCO C65: keep the 32-bit ABI but optimize the local model for lower latency.
+          sed -i 's/constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;/constexpr int   DEFAULT_CONTEXT_SIZE    = 1536;/' build-app/lib/src/main/cpp/ai_chat.cpp
+          sed -i 's/constexpr int   BATCH_SIZE              = 512;/constexpr int   BATCH_SIZE              = 256;/' build-app/lib/src/main/cpp/ai_chat.cpp
+          sed -i 's/constexpr int   N_THREADS_MAX          = 4;/constexpr int   N_THREADS_MAX          = 4;/' build-app/lib/src/main/cpp/ai_chat.cpp
           python3 lix/optimization_patch.py
           python3 lix/patch_android_abi.py
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
@@ -86,10 +86,10 @@ jobs:
           sudo apt-get install -y imagemagick
           convert lix/lix_icon.svg -resize 512x512 build-app/app/src/main/res/drawable/lix_icon.png
 
-      - name: Download Qwen3
+      - name: Download Qwen3 Fast
         run: |
-          curl -L --fail --retry 5 -o build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf 'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf?download=true'
-          ls -lh build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
+          curl -L --fail --retry 5 -o build-app/app/src/main/assets/models/lix-qwen3-0.6b-q4_0.gguf 'https://huggingface.co/ggml-org/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_0.gguf?download=true'
+          ls -lh build-app/app/src/main/assets/models/lix-qwen3-0.6b-q4_0.gguf
 
       - name: Build
         working-directory: build-app
