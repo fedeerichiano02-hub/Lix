@@ -6,6 +6,10 @@ on:
   push:
     branches: [ main ]
 
+concurrency:
+  group: lix-apk-build
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -71,13 +75,36 @@ jobs:
           convert lix/lix_icon.svg -resize 512x512 build-app/app/src/main/res/drawable/lix_icon.png
       - name: Download Qwen3
         run: |
+          set -euxo pipefail
           curl -L --fail --retry 5 -o build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf 'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf?download=true'
+          test -s build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
           ls -lh build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
+      - name: Verify model path consistency
+        run: |
+          set -euxo pipefail
+          EXPECTED='lix-qwen3-1.7b-q4_k_m.gguf'
+          test -f "build-app/app/src/main/assets/models/$EXPECTED"
+          # Prevent an old/stale model name from ever reaching the APK.
+          if grep -R -n -F 'lix-qwen3-0.6b-q4_0.gguf' build-app/app/src/main lix --exclude-dir=.git; then
+            echo 'ERROR: stale Qwen 0.6B model reference found.'
+            exit 1
+          fi
+          grep -R -n -F "$EXPECTED" build-app/app/src/main/java/com/example/llama/MainActivity.kt
       - name: Build
         working-directory: build-app
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew clean assembleDebug --no-daemon
+      - name: Verify packaged model and loader
+        run: |
+          set -euxo pipefail
+          APK=$(find build-app/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)
+          test -n "$APK"
+          unzip -l "$APK" | grep -F 'assets/models/lix-qwen3-1.7b-q4_k_m.gguf'
+          if unzip -l "$APK" | grep -F 'lix-qwen3-0.6b-q4_0.gguf'; then
+            echo 'ERROR: stale 0.6B model is packaged in the APK.'
+            exit 1
+          fi
       - name: Prepare APK artifact
         run: |
           set -euxo pipefail
