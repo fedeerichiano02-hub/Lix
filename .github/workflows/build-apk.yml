@@ -1,5 +1,5 @@
 name: Build Lix APK
-# Stable Android build with the complete Godot-focused Lix feature set.
+# Stable workflow based on the known-good APK build, with only the focused Godot surface included.
 
 on:
   workflow_dispatch:
@@ -28,33 +28,28 @@ jobs:
           packages: 'platforms;android-36 build-tools;36.0.0 ndk;29.0.13113456 cmake;3.31.6'
       - name: Get llama.cpp
         run: git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
-      - name: Prepare complete Godot Lix source tree
+      - name: Prepare focused Godot source tree
         run: |
           set -euxo pipefail
           rm -rf build-app
           cp -a llama.cpp/examples/llama.android/. build-app/
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixBackgroundStore.kt LixBackgroundWorker.kt LixImageTo3D.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
-          cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
+          for f in LixAutomation.kt LixProjectManager.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixImageTo3D.kt LixBackgroundStore.kt LixBackgroundWorker.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
           mkdir -p build-app/app/src/main/res/xml build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
-          cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/accessibility_service_config.xml
-          cp lix/voice_interaction_service.xml build-app/app/src/main/res/xml/voice_interaction_service.xml
-          python3 lix/apply_glass_ui.py
-          python3 lix/mega_features_patch.py
-          python3 lix/patch_background_runtime.py
-          python3 lix/simplify_godot_ui.py
+          python3 lix/focused_godot_ui_patch.py
           sed -i 's/\.toDrawable()//g' build-app/app/src/main/java/com/example/llama/MainActivity.kt
           python3 - <<'PY'
           from pathlib import Path
           p = Path('build-app/app/build.gradle.kts')
+          s = p.read_text()
           deps = [
               '    implementation("com.google.mlkit:text-recognition:16.0.1")',
               '    implementation("com.google.mlkit:image-labeling:17.0.9")',
               '    implementation("androidx.work:work-runtime-ktx:2.12.0")'
           ]
-          missing = [d for d in deps if d not in p.read_text()]
+          missing = [d for d in deps if d not in s]
           if missing:
-              s = p.read_text().replace('dependencies {', 'dependencies {\n' + '\n'.join(missing), 1)
+              s = s.replace('dependencies {', 'dependencies {\n' + '\n'.join(missing), 1)
               p.write_text(s)
           PY
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
@@ -77,41 +72,31 @@ jobs:
           curl -L --fail --retry 5 -o build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf 'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf?download=true'
           test -s build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
           ls -lh build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
-      - name: Verify complete feature wiring before build
-        run: |
-          set -euxo pipefail
-          test -f build-app/app/src/main/java/com/example/llama/LixImageTo3D.kt
-          grep -q 'LixImageTo3D.start' build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          grep -q 'private fun pickImageFor3D' build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          grep -q 'Personaje 3D' build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          test -f build-app/app/src/main/java/com/example/llama/LixGodotAgent.kt
-          test -f build-app/app/src/main/java/com/example/llama/LixGodotWorkspace.kt
-          test -f build-app/app/src/main/java/com/example/llama/LixBackgroundWorker.kt
-      - name: Verify model path consistency
+      - name: Verify focused feature wiring and model path
         run: |
           set -euxo pipefail
           EXPECTED='lix-qwen3-1.7b-q4_k_m.gguf'
           test -f "build-app/app/src/main/assets/models/$EXPECTED"
-          if grep -R -n -F 'lix-qwen3-0.6b-q4_0.gguf' build-app/app/src/main lix --exclude-dir=.git; then
-            echo 'ERROR: stale Qwen 0.6B model reference found.'
-            exit 1
-          fi
-          grep -R -n -F "$EXPECTED" build-app/app/src/main/java/com/example/llama/MainActivity.kt
+          test -f build-app/app/src/main/java/com/example/llama/LixImageTo3D.kt
+          test -f build-app/app/src/main/java/com/example/llama/LixGodotAgent.kt
+          test -f build-app/app/src/main/java/com/example/llama/LixGodotWorkspace.kt
+          test -f build-app/app/src/main/java/com/example/llama/LixGodotAssetRuntime.kt
+          test -f build-app/app/src/main/java/com/example/llama/LixBackgroundWorker.kt
+          grep -F 'Lix · Godot' build-app/app/src/main/java/com/example/llama/MainActivity.kt
+          grep -F 'LixImageTo3D.start' build-app/app/src/main/java/com/example/llama/MainActivity.kt
+          if grep -R -n -F 'lix-qwen3-0.6b-q4_0.gguf' build-app/app/src/main lix --exclude-dir=.git; then exit 1; fi
       - name: Build
         working-directory: build-app
         run: |
           chmod +x gradlew
           ./gradlew clean assembleDebug --no-daemon
-      - name: Verify packaged model and complete feature wiring
+      - name: Verify packaged model and focused modules
         run: |
           set -euxo pipefail
           APK=$(find build-app/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)
           test -n "$APK"
           unzip -l "$APK" | grep -F 'assets/models/lix-qwen3-1.7b-q4_k_m.gguf'
-          if unzip -l "$APK" | grep -F 'lix-qwen3-0.6b-q4_0.gguf'; then
-            echo 'ERROR: stale 0.6B model is packaged in the APK.'
-            exit 1
-          fi
+          if unzip -l "$APK" | grep -F 'lix-qwen3-0.6b-q4_0.gguf'; then exit 1; fi
       - name: Prepare APK artifact
         run: |
           set -euxo pipefail
@@ -124,9 +109,7 @@ jobs:
         run: |
           APK=build-app/dist/Lix.apk
           test -f "$APK"
-          echo "Final Lix APK size:"
           ls -lh "$APK"
-          echo "Final Lix APK SHA-256:"
           sha256sum "$APK"
       - name: Deep verify APK for Android installer
         run: |
@@ -136,7 +119,6 @@ jobs:
           tail -n 3 /tmp/lix_unzip_test.txt
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" | head -n 25
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
-          unzip -l "$APK" | grep -E 'lib/[^/]+/.*\.(so)$' | head -n 40 || true
           stat -c '%s' "$APK"
       - name: Upload complete APK
         uses: actions/upload-artifact@v4
