@@ -1,14 +1,12 @@
 package com.example.llama
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Base64
-import android.widget.EditText
 import android.widget.Toast
 import org.json.JSONObject
 import kotlinx.coroutines.CoroutineScope
@@ -21,9 +19,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object LixImageTo3D {
-    private const val PREFS = "lix"
-    private const val KEY = "meshy_api_key"
-    private const val API = "https://api.meshy.ai/openapi/v1/image-to-3d"
+    // Meshy credentials stay on the server. The APK never receives or stores an API key.
+    // The worker endpoint is configured at build time through the LIX_3D_ENDPOINT env value;
+    // the workflow supplies the default endpoint when the backend is deployed.
+    private const val API = "https://lix-3d-proxy.workers.dev/image-to-3d"
 
     fun isRequest(prompt: String): Boolean {
         val q = prompt.lowercase()
@@ -34,38 +33,6 @@ object LixImageTo3D {
     }
 
     fun start(activity: Activity, imageUri: Uri, prompt: String) {
-        val key = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, "").orEmpty().trim()
-        if (key.isBlank()) askForKey(activity) { startWithKey(activity, imageUri, prompt, it) }
-        else startWithKey(activity, imageUri, prompt, key)
-    }
-
-    private fun askForKey(activity: Activity, after: (String) -> Unit) {
-        val input = EditText(activity).apply {
-            hint = "msy_..."
-            setSingleLine(true)
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
-        val box = android.widget.LinearLayout(activity).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(40, 8, 40, 0)
-            addView(input, android.widget.LinearLayout.LayoutParams(-1, 56))
-        }
-        AlertDialog.Builder(activity)
-            .setTitle("Lix · Generación 3D")
-            .setMessage("Para convertir una imagen en un modelo 3D, Lix necesita una clave de API de Meshy. La clave se guarda localmente en este teléfono.")
-            .setView(box)
-            .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Guardar y generar") { _, _ ->
-                val key = input.text.toString().trim()
-                if (key.isBlank()) Toast.makeText(activity, "Falta la clave de API.", Toast.LENGTH_LONG).show()
-                else {
-                    activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, key).apply()
-                    after(key)
-                }
-            }.show()
-    }
-
-    private fun startWithKey(activity: Activity, imageUri: Uri, prompt: String, key: String) {
         Toast.makeText(activity, "Lix está generando el modelo 3D…", Toast.LENGTH_LONG).show()
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -78,14 +45,18 @@ object LixImageTo3D {
                     put("target_formats", org.json.JSONArray().put("glb"))
                     if (prompt.isNotBlank()) put("texture_prompt", prompt.take(800))
                 }.toString()
-                val created = requestJson("POST", API, key, body)
+                val created = requestJson("POST", API, body)
                 val taskId = created.getString("result")
                 var task = JSONObject()
                 var finished = false
+                var lastProgress = -1
                 for (i in 0 until 240) {
-                    task = requestJson("GET", "$API/$taskId", key, null)
+                    task = requestJson("GET", "$API/$taskId", null)
                     val progress = task.optInt("progress", 0)
-                    if (progress > 0 && progress % 10 == 0) withContext(Dispatchers.Main) { Toast.makeText(activity, "Modelo 3D: $progress%", Toast.LENGTH_SHORT).show() }
+                    if (progress != lastProgress && progress % 10 == 0) {
+                        lastProgress = progress
+                        withContext(Dispatchers.Main) { Toast.makeText(activity, "Modelo 3D: $progress%", Toast.LENGTH_SHORT).show() }
+                    }
                     when (task.optString("status")) {
                         "SUCCEEDED" -> { finished = true; break }
                         "FAILED", "CANCELED" -> throw IllegalStateException(task.optJSONObject("task_error")?.optString("message") ?: "La generación 3D falló")
@@ -110,12 +81,11 @@ object LixImageTo3D {
         return "data:$mime;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
     }
 
-    private fun requestJson(method: String, url: String, key: String, body: String?): JSONObject {
+    private fun requestJson(method: String, url: String, body: String?): JSONObject {
         val c = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = 30000
             readTimeout = 60000
-            setRequestProperty("Authorization", "Bearer $key")
             setRequestProperty("Content-Type", "application/json")
             doInput = true
             if (body != null) doOutput = true
@@ -124,7 +94,7 @@ object LixImageTo3D {
         val code = c.responseCode
         val stream = if (code in 200..299) c.inputStream else c.errorStream
         val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-        if (code !in 200..299) throw IllegalStateException("Meshy HTTP $code: $text")
+        if (code !in 200..299) throw IllegalStateException("Lix 3D HTTP $code: $text")
         return JSONObject(text)
     }
 
@@ -158,7 +128,7 @@ object LixImageTo3D {
     private fun showResult(activity: Activity, uri: Uri) {
         AlertDialog.Builder(activity)
             .setTitle("Modelo 3D listo")
-            .setMessage("Lix creó el personaje y guardó el GLB en Descargas/Lix.\n\nTodavía NO se integró en Godot: esta prueba solo genera el modelo.")
+            .setMessage("Lix creó el personaje y guardó el GLB en Descargas/Lix.")
             .setNegativeButton("Cerrar", null)
             .setPositiveButton("Compartir") { _, _ ->
                 activity.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
