@@ -13,21 +13,22 @@ import kotlinx.coroutines.flow.collect
 import java.io.File
 import java.io.FileOutputStream
 
-/** Runs user-requested long tasks outside the Activity lifecycle. */
+/** Persistent long-running worker, independent from MainActivity. */
 class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     companion object {
         const val KEY_ID = "task_id"
         const val KEY_PROMPT = "task_prompt"
         private const val CHANNEL = "lix_background"
         private const val NOTIFICATION_ID = 7010
+        private const val CHECKPOINT_EVERY_CHUNKS = 20
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         createChannel()
         val notification = Notification.Builder(applicationContext, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_popup_sync)
-            .setContentTitle("Lix está trabajando")
-            .setContentText("La tarea continúa aunque cierres la aplicación.")
+            .setContentTitle("Lix está trabajando en segundo plano")
+            .setContentText("Podés salir de Lix y seguir con otras tareas.")
             .setOngoing(true)
             .build()
         return if (android.os.Build.VERSION.SDK_INT >= 29)
@@ -38,9 +39,11 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
     override suspend fun doWork(): Result {
         val id = inputData.getString(KEY_ID) ?: return Result.failure()
         val prompt = inputData.getString(KEY_PROMPT) ?: return Result.failure()
-        LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "running"))
+        LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "queued"))
         return try {
             setForeground(getForegroundInfo())
+            LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "running"))
+
             val model = File(applicationContext.filesDir, "models/lix-qwen3-1.7b-q4_k_m.gguf")
             if (!model.exists()) {
                 model.parentFile?.mkdirs()
@@ -48,18 +51,31 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
                     FileOutputStream(model).use { dst -> src.copyTo(dst) }
                 }
             }
+
             val engine = AiChat.getInferenceEngine(applicationContext)
             engine.loadModel(model.absolutePath)
-            engine.setSystemPrompt("Sos Lix, asistente personal. Respondé en español argentino, claro, directo y útil. No inventes datos. Priorizá completar la tarea solicitada.")
+            engine.setSystemPrompt("Sos Lix, asistente de desarrollo. Trabajás de forma autónoma sobre la tarea solicitada. Respondé en español argentino. No inventes archivos ni resultados. Si la tarea involucra Godot, inspeccioná primero el proyecto y respetá los sistemas existentes. Guardá avances y explicá claramente qué hiciste y qué quedó pendiente.")
+
             val result = StringBuilder()
-            engine.sendUserPrompt(prompt).collect { result.append(it) }
-            val answer = result.toString().replace(Regex("<think>[\\s\\S]*?</think>", RegexOption.IGNORE_CASE), "").trim()
+            var chunks = 0
+            engine.sendUserPrompt(prompt).collect { piece ->
+                result.append(piece)
+                chunks++
+                if (chunks % CHECKPOINT_EVERY_CHUNKS == 0) {
+                    LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "running", result.toString()))
+                }
+            }
+
+            val answer = result.toString()
+                .replace(Regex("<think>[\\s\\S]*?</think>", RegexOption.IGNORE_CASE), "")
+                .trim()
             LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "completed", answer))
             notifyDone(answer)
             Result.success()
         } catch (t: Throwable) {
-            LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "failed", t.message ?: "Error desconocido"))
-            notifyDone("La tarea no pudo terminar: ${t.message ?: "error desconocido"}")
+            val message = t.message ?: "error desconocido"
+            LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "failed", message))
+            notifyDone("La tarea no pudo terminar: $message")
             Result.failure()
         }
     }
