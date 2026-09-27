@@ -1,1 +1,2 @@
-Force rebuild after fixing simplify_godot_ui.py syntax. Build must compile the complete Godot-focused Lix APK and run all verification gates.
+Nueva build de Lix Godot.
+Mantener el sistema de compilación que generó la build 207 y compilar la nueva superficie Godot limpia.
