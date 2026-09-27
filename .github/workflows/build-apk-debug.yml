@@ -49,32 +49,17 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew clean assembleDebug --no-daemon --stacktrace --info 2>&1 | tee /tmp/lix-gradle.log
-      - name: Locate APK
-        if: always()
+      - name: Stage APK
         run: |
           set -euxo pipefail
           rm -rf dist
           mkdir -p dist
-          find "$GITHUB_WORKSPACE/build-app" -type f \( -name '*.apk' -o -name '*.aab' \) -print
-          find "$GITHUB_WORKSPACE/build-app" -type f -name '*.apk' -print -exec ls -lh {} \;
-          APK=$(find "$GITHUB_WORKSPACE/build-app" -type f -name '*.apk' | head -n 1 || true)
-          if [ -z "$APK" ]; then
-            echo 'No APK found. Gradle output directories:'
-            find "$GITHUB_WORKSPACE/build-app" -maxdepth 8 -type d \( -name outputs -o -name apk -o -name debug \) -print
-            exit 1
-          fi
-          cp "$APK" "$GITHUB_WORKSPACE/dist/Lix.apk"
-          test -s "$GITHUB_WORKSPACE/dist/Lix.apk"
-          ls -lh "$GITHUB_WORKSPACE/dist/Lix.apk"
-          sha256sum "$GITHUB_WORKSPACE/dist/Lix.apk"
-      - name: Upload APK
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Lix-APK-Godot-${{ github.run_number }}
-          path: ${{ github.workspace }}/dist/Lix.apk
-          if-no-files-found: error
-          compression-level: 0
+          APK=$(find build-app/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)
+          test -n "$APK"
+          cp "$APK" dist/Lix.apk
+          test -s dist/Lix.apk
+          sha256sum dist/Lix.apk
+          ls -lh dist/Lix.apk
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -83,4 +68,12 @@ jobs:
           path: /tmp/lix-gradle.log
           if-no-files-found: warn
           compression-level: 0
-# Triggered by ChatGPT to start the APK build.
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lix-APK-Godot-${{ github.run_number }}
+          path: dist/Lix.apk
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
