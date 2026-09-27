@@ -1,5 +1,6 @@
 package com.example.llama
 
+import android.app.Activity
 import android.app.ActivityManager
 import android.app.AlertDialog
 import android.content.Context
@@ -33,7 +34,7 @@ object LixStage1Core {
         if (q.contains("proyecto activo") || q.contains("qué proyecto tengo") || q.contains("que proyecto tengo")) { toast(c, prefs(c).getString(PROJECT, null) ?: "No hay proyecto activo guardado."); return true }
         if (q.contains("modo godot") || q.contains("prepará lix para godot") || q.contains("prepara lix para godot")) {
             prefs(c).edit().putBoolean("godot_mode", true).apply()
-            toast(c, if (LixProjectManager.hasAuthorizedProject(c as Activity)) "Modo Godot activado con proyecto autorizado." else "Modo Godot activado. Elegí la carpeta del proyecto para darle acceso.")
+            toast(c, if (c is Activity && LixProjectManager.hasAuthorizedProject(c)) "Modo Godot activado con proyecto autorizado." else "Modo Godot activado. Elegí la carpeta del proyecto para darle acceso.")
             return true
         }
         if (q.contains("inspeccioná mi proyecto godot") || q.contains("inspecciona mi proyecto godot") || q.contains("analizá mi proyecto godot") || q.contains("analiza mi proyecto godot")) {
