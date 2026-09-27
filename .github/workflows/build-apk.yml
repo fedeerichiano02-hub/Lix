@@ -34,21 +34,22 @@ jobs:
           rm -rf build-app
           cp -a llama.cpp/examples/llama.android/. build-app/
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixImageTo3D.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
+          for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixBackgroundStore.kt LixBackgroundWorker.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
           cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
           mkdir -p build-app/app/src/main/res/xml build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/accessibility_service_config.xml
           cp lix/voice_interaction_service.xml build-app/app/src/main/res/xml/voice_interaction_service.xml
           python3 lix/apply_glass_ui.py
           python3 lix/mega_features_patch.py
-          python3 lix/patch_image_to_3d.py
+          python3 lix/patch_background_runtime.py
           python3 - <<'PY'
           from pathlib import Path
           p = Path('build-app/app/build.gradle.kts')
           s = p.read_text()
           deps = [
               '    implementation("com.google.mlkit:text-recognition:16.0.1")',
-              '    implementation("com.google.mlkit:image-labeling:17.0.9")'
+              '    implementation("com.google.mlkit:image-labeling:17.0.9")',
+              '    implementation("androidx.work:work-runtime-ktx:2.12.0")'
           ]
           missing = [d for d in deps if d not in s]
           if missing:
@@ -60,8 +61,8 @@ jobs:
           sed -i '/abiFilters += listOf/c\             abiFilters += listOf("armeabi-v7a")' build-app/lib/build.gradle.kts
           sed -i 's/-DGGML_CPU_ALL_VARIANTS=ON/-DGGML_CPU_ALL_VARIANTS=OFF/' build-app/lib/build.gradle.kts
           sed -i 's/constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;/constexpr int   DEFAULT_CONTEXT_SIZE    = 2048;/' build-app/lib/src/main/cpp/ai_chat.cpp
-          sed -i 's/constexpr int   BATCH_SIZE              = 512;/constexpr int   BATCH_SIZE              = 128;/' build-app/lib/src/main/cpp/ai_chat.cpp
-          sed -i 's/constexpr int   N_THREADS_MAX          = 4;/constexpr int   N_THREADS_MAX          = 2;/' build-app/lib/src/main/cpp/ai_chat.cpp
+          sed -i 's/constexpr int   BATCH_SIZE              = 512;/constexpr int   BATCH_SIZE              = 256;/' build-app/lib/src/main/cpp/ai_chat.cpp
+          sed -i 's/constexpr int   N_THREADS_MAX          = 4;/constexpr int   N_THREADS_MAX          = 4;/' build-app/lib/src/main/cpp/ai_chat.cpp
           python3 lix/optimization_patch.py
           python3 lix/patch_android_abi.py
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
