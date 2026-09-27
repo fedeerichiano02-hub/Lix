@@ -1,5 +1,5 @@
 name: Build Lix APK
-# Stable workflow based on the known-good APK build, with only the focused Godot surface included.
+# New focused Godot build. Compilation path intentionally follows known-good APK #207.
 
 on:
   workflow_dispatch:
@@ -34,7 +34,7 @@ jobs:
           rm -rf build-app
           cp -a llama.cpp/examples/llama.android/. build-app/
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          for f in LixAutomation.kt LixProjectManager.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixImageTo3D.kt LixBackgroundStore.kt LixBackgroundWorker.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
+          for f in LixAutomation.kt LixProjectManager.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixBackgroundStore.kt LixBackgroundWorker.kt LixImageTo3D.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
           mkdir -p build-app/app/src/main/res/xml build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           python3 lix/focused_godot_ui_patch.py
           sed -i 's/\.toDrawable()//g' build-app/app/src/main/java/com/example/llama/MainActivity.kt
@@ -71,17 +71,12 @@ jobs:
           set -euxo pipefail
           curl -L --fail --retry 5 -o build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf 'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf?download=true'
           test -s build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
-          ls -lh build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
-      - name: Verify focused feature wiring and model path
+      - name: Verify focused wiring
         run: |
           set -euxo pipefail
           EXPECTED='lix-qwen3-1.7b-q4_k_m.gguf'
           test -f "build-app/app/src/main/assets/models/$EXPECTED"
-          test -f build-app/app/src/main/java/com/example/llama/LixImageTo3D.kt
-          test -f build-app/app/src/main/java/com/example/llama/LixGodotAgent.kt
-          test -f build-app/app/src/main/java/com/example/llama/LixGodotWorkspace.kt
-          test -f build-app/app/src/main/java/com/example/llama/LixGodotAssetRuntime.kt
-          test -f build-app/app/src/main/java/com/example/llama/LixBackgroundWorker.kt
+          for f in LixImageTo3D.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixBackgroundWorker.kt; do test -f "build-app/app/src/main/java/com/example/llama/$f"; done
           grep -F 'Lix · Godot' build-app/app/src/main/java/com/example/llama/MainActivity.kt
           grep -F 'LixImageTo3D.start' build-app/app/src/main/java/com/example/llama/MainActivity.kt
           if grep -R -n -F 'lix-qwen3-0.6b-q4_0.gguf' build-app/app/src/main lix --exclude-dir=.git; then exit 1; fi
@@ -109,7 +104,6 @@ jobs:
         run: |
           APK=build-app/dist/Lix.apk
           test -f "$APK"
-          ls -lh "$APK"
           sha256sum "$APK"
       - name: Deep verify APK for Android installer
         run: |
