@@ -49,29 +49,25 @@ jobs:
         run: |
           set -euxo pipefail
           chmod +x gradlew
+          set -o pipefail
           ./gradlew clean :app:assembleDebug --no-daemon --stacktrace --info 2>&1 | tee /tmp/lix-gradle.log
       - name: Locate and stage APK
-        if: always()
+        if: success()
         run: |
           set -euxo pipefail
           rm -rf dist
           mkdir -p dist
-          echo '=== APK files produced by Gradle ==='
-          find build-app -type f -name '*.apk' -print -exec ls -lh {} \; || true
-          mapfile -t APKS < <(find build-app/app/build/outputs -type f -name '*.apk' -size +1k 2>/dev/null | sort)
+          find build-app -type f -name '*.apk' -print -exec ls -lh {} \;
+          mapfile -t APKS < <(find build-app -type f -name '*.apk' -size +1k 2>/dev/null | sort)
           if [ "${#APKS[@]}" -eq 0 ]; then
-            echo 'No APK found under build-app/app/build/outputs.'
-            echo '=== build outputs ==='
-            find build-app/app/build/outputs -maxdepth 6 -type f -print 2>/dev/null || true
+            echo 'No APK produced by Gradle.'
+            find build-app/app/build/outputs -maxdepth 8 -type f -print 2>/dev/null || true
             exit 1
           fi
           APK="${APKS[0]}"
-          if [ "${#APKS[@]}" -gt 1 ]; then
-            for candidate in "${APKS[@]}"; do
-              if [[ "$candidate" == *debug*.apk ]]; then APK="$candidate"; break; fi
-            done
-          fi
-          echo "Selected APK: $APK"
+          for candidate in "${APKS[@]}"; do
+            if [[ "$candidate" == *debug*.apk ]]; then APK="$candidate"; break; fi
+          done
           cp "$APK" dist/Lix.apk
           test -s dist/Lix.apk
           sha256sum dist/Lix.apk
