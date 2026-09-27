@@ -64,17 +64,30 @@ jobs:
           ANDROID_ABI: arm64-v8a
         run: |
           chmod +x gradlew
-          ./gradlew clean assembleDebug --no-daemon --stacktrace --info
+          ./gradlew clean :app:assembleDebug --no-daemon --stacktrace --info 2>&1 | tee /tmp/lix-gradle.log
 
       - name: Prepare APK artifact
+        if: always()
         run: |
+          set -euxo pipefail
+          rm -rf build-app/dist
           mkdir -p build-app/dist
-          APK=$(find build-app/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)
-          test -n "$APK"
+          APK="build-app/app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$APK" ]; then
+            APK=$(find build-app/app/build/outputs -type f -name '*.apk' | head -n 1 || true)
+          fi
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+            echo 'APK not found in app/build/outputs'
+            find build-app -type f -name '*.apk' -print
+            exit 1
+          fi
           cp "$APK" build-app/dist/Lix.apk
+          test -s build-app/dist/Lix.apk
+          sha256sum build-app/dist/Lix.apk
           ls -lh build-app/dist/Lix.apk
 
       - name: Verify final APK size and integrity
+        if: success()
         run: |
           APK=build-app/dist/Lix.apk
           test -f "$APK"
@@ -82,6 +95,7 @@ jobs:
           ls -lh "$APK"
 
       - name: Deep verify APK for Android installer
+        if: success()
         run: |
           APK=build-app/dist/Lix.apk
           test -f "$APK"
@@ -93,9 +107,21 @@ jobs:
           unzip -l "$APK" | grep -E 'lib/[^/]+/.*\.(so)$' | head -n 40 || true
           stat -c '%s' "$APK"
 
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lix-debug-${{ github.run_number }}
+          path: /tmp/lix-gradle.log
+          if-no-files-found: warn
+          compression-level: 0
+
       - name: Upload complete APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Lix-APK-POCO-C65-Godot-${{ github.run_number }}
           path: build-app/dist/Lix.apk
           if-no-files-found: error
+          compression-level: 0
+          overwrite: true
