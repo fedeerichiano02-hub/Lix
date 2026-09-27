@@ -34,22 +34,7 @@ jobs:
           rm -rf build-app
           cp -a llama.cpp/examples/llama.android/. build-app/
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          cp lix/LixAutomation.kt build-app/app/src/main/java/com/example/llama/LixAutomation.kt
-          cp lix/LixAccessibilityService.kt build-app/app/src/main/java/com/example/llama/LixAccessibilityService.kt
-          cp lix/LixWakeService.kt build-app/app/src/main/java/com/example/llama/LixWakeService.kt
-          cp lix/LixTaskService.kt build-app/app/src/main/java/com/example/llama/LixTaskService.kt
-          cp lix/LixVoiceInteractionService.kt build-app/app/src/main/java/com/example/llama/LixVoiceInteractionService.kt
-          cp lix/LixVoiceSessionService.kt build-app/app/src/main/java/com/example/llama/LixVoiceSessionService.kt
-          cp lix/LixProjectManager.kt build-app/app/src/main/java/com/example/llama/LixProjectManager.kt
-          cp lix/LixEvolution.kt build-app/app/src/main/java/com/example/llama/LixEvolution.kt
-          cp lix/LixVisualCreator.kt build-app/app/src/main/java/com/example/llama/LixVisualCreator.kt
-          cp lix/LixFeatureHub.kt build-app/app/src/main/java/com/example/llama/LixFeatureHub.kt
-          cp lix/LixFeatureRuntime.kt build-app/app/src/main/java/com/example/llama/LixFeatureRuntime.kt
-          cp lix/LixMegaModules.kt build-app/app/src/main/java/com/example/llama/LixMegaModules.kt
-          cp lix/LixStage1Core.kt build-app/app/src/main/java/com/example/llama/LixStage1Core.kt
-          cp lix/LixCapabilityStore.kt build-app/app/src/main/java/com/example/llama/LixCapabilityStore.kt
-          cp lix/LixGodotAgent.kt build-app/app/src/main/java/com/example/llama/LixGodotAgent.kt
-          cp lix/LixGodotWorkspace.kt build-app/app/src/main/java/com/example/llama/LixGodotWorkspace.kt
+          for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
           cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
           mkdir -p build-app/app/src/main/res/xml build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/accessibility_service_config.xml
