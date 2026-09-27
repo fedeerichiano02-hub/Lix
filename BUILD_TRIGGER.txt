@@ -1,1 +1,1 @@
-APK build trigger for commit cb05e826689999f678f23a2e8e7511c22d173034
+Force rebuild after fixing simplify_godot_ui.py syntax. Build must compile the complete Godot-focused Lix APK and run all verification gates.
