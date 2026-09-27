@@ -44,22 +44,26 @@ jobs:
           convert lix/lix_icon.svg -resize 512x512 build-app/app/src/main/res/drawable/lix_icon.png
       - name: Download model
         run: curl -L --fail --retry 5 -o build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf 'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf?download=true'
-      - name: Build
+      - name: Build APK
         working-directory: build-app
         run: |
           chmod +x gradlew
-          ./gradlew clean assembleDebug --no-daemon --stacktrace --info 2>&1 | tee /tmp/lix-gradle.log
+          ./gradlew clean :app:assembleDebug --no-daemon --stacktrace --info 2>&1 | tee /tmp/lix-gradle.log
       - name: Stage APK
         if: always()
         run: |
           set -euxo pipefail
           rm -rf dist
           mkdir -p dist
-          echo 'Searching Gradle outputs...'
-          find build-app -type f -name '*.apk' -print
-          APK=$(find build-app -type f -name '*.apk' | grep -E '/(debug|release)/' | head -n 1 || true)
-          if [ -z "$APK" ]; then APK=$(find build-app -type f -name '*.apk' | head -n 1 || true); fi
-          if [ -z "$APK" ]; then echo 'No APK produced'; exit 1; fi
+          APK="build-app/app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$APK" ]; then
+            APK=$(find build-app/app/build/outputs -type f -name '*.apk' | head -n 1 || true)
+          fi
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+            echo 'APK not found in app/build/outputs'
+            find build-app -type f -name '*.apk' -print
+            exit 1
+          fi
           cp "$APK" dist/Lix.apk
           test -s dist/Lix.apk
           sha256sum dist/Lix.apk
@@ -81,5 +85,3 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           overwrite: true
-
-# Automatic trigger commit: APK build requested.
