@@ -1,5 +1,5 @@
 name: Build Lix APK
-# Stable build workflow based on the known-good Lix APK build.
+# Stable Android build with the complete Godot-focused Lix feature set.
 
 on:
   workflow_dispatch:
@@ -28,13 +28,13 @@ jobs:
           packages: 'platforms;android-36 build-tools;36.0.0 ndk;29.0.13113456 cmake;3.31.6'
       - name: Get llama.cpp
         run: git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
-      - name: Prepare llama.cpp source tree
+      - name: Prepare complete Godot Lix source tree
         run: |
           set -euxo pipefail
           rm -rf build-app
           cp -a llama.cpp/examples/llama.android/. build-app/
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixBackgroundStore.kt LixBackgroundWorker.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
+          for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixBackgroundStore.kt LixBackgroundWorker.kt LixImageTo3D.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
           cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
           mkdir -p build-app/app/src/main/res/xml build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/accessibility_service_config.xml
@@ -42,20 +42,19 @@ jobs:
           python3 lix/apply_glass_ui.py
           python3 lix/mega_features_patch.py
           python3 lix/patch_background_runtime.py
-          # Compatibility fix: the stable Android build does not require the Core KTX toDrawable extension.
+          python3 lix/simplify_godot_ui.py
           sed -i 's/\.toDrawable()//g' build-app/app/src/main/java/com/example/llama/MainActivity.kt
           python3 - <<'PY'
           from pathlib import Path
           p = Path('build-app/app/build.gradle.kts')
-          s = p.read_text()
           deps = [
               '    implementation("com.google.mlkit:text-recognition:16.0.1")',
               '    implementation("com.google.mlkit:image-labeling:17.0.9")',
               '    implementation("androidx.work:work-runtime-ktx:2.12.0")'
           ]
-          missing = [d for d in deps if d not in s]
+          missing = [d for d in deps if d not in p.read_text()]
           if missing:
-              s = s.replace('dependencies {', 'dependencies {\n' + '\n'.join(missing), 1)
+              s = p.read_text().replace('dependencies {', 'dependencies {\n' + '\n'.join(missing), 1)
               p.write_text(s)
           PY
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
@@ -64,7 +63,6 @@ jobs:
           sed -i 's/-DGGML_CPU_ALL_VARIANTS=ON/-DGGML_CPU_ALL_VARIANTS=OFF/' build-app/lib/build.gradle.kts
           sed -i 's/constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;/constexpr int   DEFAULT_CONTEXT_SIZE    = 2048;/' build-app/lib/src/main/cpp/ai_chat.cpp
           sed -i 's/constexpr int   BATCH_SIZE              = 512;/constexpr int   BATCH_SIZE              = 256;/' build-app/lib/src/main/cpp/ai_chat.cpp
-          sed -i 's/constexpr int   N_THREADS_MAX          = 4;/constexpr int   N_THREADS_MAX          = 4;/' build-app/lib/src/main/cpp/ai_chat.cpp
           python3 lix/optimization_patch.py
           python3 lix/patch_android_abi.py
           sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.lix.ai"/' build-app/app/build.gradle.kts
@@ -79,12 +77,21 @@ jobs:
           curl -L --fail --retry 5 -o build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf 'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf?download=true'
           test -s build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
           ls -lh build-app/app/src/main/assets/models/lix-qwen3-1.7b-q4_k_m.gguf
+      - name: Verify complete feature wiring before build
+        run: |
+          set -euxo pipefail
+          test -f build-app/app/src/main/java/com/example/llama/LixImageTo3D.kt
+          grep -q 'LixImageTo3D.start' build-app/app/src/main/java/com/example/llama/MainActivity.kt
+          grep -q 'private fun pickImageFor3D' build-app/app/src/main/java/com/example/llama/MainActivity.kt
+          grep -q 'Personaje 3D' build-app/app/src/main/java/com/example/llama/MainActivity.kt
+          test -f build-app/app/src/main/java/com/example/llama/LixGodotAgent.kt
+          test -f build-app/app/src/main/java/com/example/llama/LixGodotWorkspace.kt
+          test -f build-app/app/src/main/java/com/example/llama/LixBackgroundWorker.kt
       - name: Verify model path consistency
         run: |
           set -euxo pipefail
           EXPECTED='lix-qwen3-1.7b-q4_k_m.gguf'
           test -f "build-app/app/src/main/assets/models/$EXPECTED"
-          # Prevent an old/stale model name from ever reaching the APK.
           if grep -R -n -F 'lix-qwen3-0.6b-q4_0.gguf' build-app/app/src/main lix --exclude-dir=.git; then
             echo 'ERROR: stale Qwen 0.6B model reference found.'
             exit 1
@@ -95,7 +102,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew clean assembleDebug --no-daemon
-      - name: Verify packaged model and loader
+      - name: Verify packaged model and complete feature wiring
         run: |
           set -euxo pipefail
           APK=$(find build-app/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)
