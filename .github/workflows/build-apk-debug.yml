@@ -81,3 +81,5 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           overwrite: true
+
+# Automatic trigger commit: APK build requested.
