@@ -50,12 +50,16 @@ jobs:
           chmod +x gradlew
           ./gradlew clean assembleDebug --no-daemon --stacktrace --info 2>&1 | tee /tmp/lix-gradle.log
       - name: Stage APK
+        if: always()
         run: |
           set -euxo pipefail
           rm -rf dist
           mkdir -p dist
-          APK=$(find build-app/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)
-          test -n "$APK"
+          echo 'Searching Gradle outputs...'
+          find build-app -type f -name '*.apk' -print
+          APK=$(find build-app -type f -name '*.apk' | grep -E '/(debug|release)/' | head -n 1 || true)
+          if [ -z "$APK" ]; then APK=$(find build-app -type f -name '*.apk' | head -n 1 || true); fi
+          if [ -z "$APK" ]; then echo 'No APK produced'; exit 1; fi
           cp "$APK" dist/Lix.apk
           test -s dist/Lix.apk
           sha256sum dist/Lix.apk
@@ -69,7 +73,7 @@ jobs:
           if-no-files-found: warn
           compression-level: 0
       - name: Upload APK
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Lix-APK-Godot-${{ github.run_number }}
