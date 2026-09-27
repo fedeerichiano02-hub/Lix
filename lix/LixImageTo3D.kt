@@ -1,6 +1,7 @@
 package com.example.llama
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -19,9 +20,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object LixImageTo3D {
-    // Meshy credentials stay on the server. The APK never receives or stores an API key.
-    // The worker endpoint is configured at build time through the LIX_3D_ENDPOINT env value;
-    // the workflow supplies the default endpoint when the backend is deployed.
     private const val API = "https://lix-3d-proxy.workers.dev/image-to-3d"
 
     fun isRequest(prompt: String): Boolean {
