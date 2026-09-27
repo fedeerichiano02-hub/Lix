@@ -55,9 +55,14 @@ jobs:
           set -euxo pipefail
           rm -rf dist
           mkdir -p dist
-          find "$GITHUB_WORKSPACE/build-app" -type f -name '*.apk' -print
+          find "$GITHUB_WORKSPACE/build-app" -type f \( -name '*.apk' -o -name '*.aab' \) -print
+          find "$GITHUB_WORKSPACE/build-app" -type f -name '*.apk' -print -exec ls -lh {} \;
           APK=$(find "$GITHUB_WORKSPACE/build-app" -type f -name '*.apk' | head -n 1 || true)
-          if [ -z "$APK" ]; then echo 'No APK produced'; exit 1; fi
+          if [ -z "$APK" ]; then
+            echo 'No APK found. Gradle output directories:'
+            find "$GITHUB_WORKSPACE/build-app" -maxdepth 8 -type d \( -name outputs -o -name apk -o -name debug \) -print
+            exit 1
+          fi
           cp "$APK" "$GITHUB_WORKSPACE/dist/Lix.apk"
           test -s "$GITHUB_WORKSPACE/dist/Lix.apk"
           ls -lh "$GITHUB_WORKSPACE/dist/Lix.apk"
