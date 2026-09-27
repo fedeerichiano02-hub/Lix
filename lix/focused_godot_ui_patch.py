@@ -79,5 +79,11 @@ replacement = new_ui + '    private fun gradientCard('
 s2, count = re.subn(pattern, replacement, s, flags=re.S)
 if count != 1:
     raise SystemExit(f'buildUi replacement failed: {count}')
-p.write_text(s2)
-print('Focused Godot UI applied')
+s = s2
+# Remove runtime hooks for features intentionally excluded from the focused Godot build.
+s = s.replace('private fun announceTaskCompletion(message: String) { try { startService(Intent(this, LixTaskService::class.java).putExtra("task_message", message)) } catch (_: Exception) { speakLix(message) } }', 'private fun announceTaskCompletion(message: String) { speakLix(message) }')
+s = s.replace('private fun startWakeService() { if (!wakeServiceEnabled) return; try { val i = Intent(this, LixWakeService::class.java); if (Build.VERSION.SDK_INT >= 26) startForegroundService(i) else startService(i) } catch (_: Exception) { toast("Android bloqueó la activación de voz en segundo plano.") } }', 'private fun startWakeService() {}')
+s = s.replace('private fun stopWakeService() { stopService(Intent(this, LixWakeService::class.java)) }', 'private fun stopWakeService() {}')
+s = re.sub(r'private fun runPhoneAction\(command: String\): Boolean =?\s*\{.*?\}\s*private fun pickImageForVision', 'private fun runPhoneAction(command: String): Boolean = false\n    private fun pickImageForVision', s, flags=re.S)
+p.write_text(s)
+print('Focused Godot UI and inactive hooks applied')
