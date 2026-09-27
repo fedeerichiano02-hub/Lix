@@ -30,13 +30,27 @@ jobs:
           cp -a llama.cpp/examples/llama.android/. build-app
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
           sed -i 's/\.toDrawable()//g' build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
+          for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixImageTo3D.kt LixBackgroundStore.kt LixBackgroundWorker.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
           cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
           mkdir -p build-app/app/src/main/res/xml build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/
           cp lix/voice_interaction_service.xml build-app/app/src/main/res/xml/
           python3 lix/apply_glass_ui.py
           python3 lix/mega_features_patch.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("build-app/app/build.gradle.kts")
+          s = p.read_text()
+          deps = [
+              '    implementation("com.google.mlkit:text-recognition:16.0.1")',
+              '    implementation("com.google.mlkit:image-labeling:17.0.9")',
+              '    implementation("androidx.work:work-runtime-ktx:2.12.0")'
+          ]
+          missing = [d for d in deps if d not in s]
+          if missing:
+              s = s.replace("dependencies {", "dependencies {\n" + "\n".join(missing), 1)
+              p.write_text(s)
+          PY
           python3 lix/integrate_godot_agent.py
           python3 lix/prepare_build.py
           sed -i 's#^set(LLAMA_SRC.*#set(LLAMA_SRC ${CMAKE_CURRENT_LIST_DIR}/../../../../../llama.cpp)#' build-app/lib/src/main/cpp/CMakeLists.txt
