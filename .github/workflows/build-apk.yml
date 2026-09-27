@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Java 17
         uses: actions/setup-java@v5
         with:
@@ -35,7 +37,8 @@ jobs:
           set -euxo pipefail
           rm -rf build-app
           cp -a llama.cpp/examples/llama.android/. build-app/
-          cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
+          # Restore the last known-good complete MainActivity before applying the focused Godot UI.
+          git show e45ab12ee66efa78e2637b54ce19a19ae185b5c7:lix/MainActivity.kt > build-app/app/src/main/java/com/example/llama/MainActivity.kt
           for f in LixAutomation.kt LixProjectManager.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixImageTo3D.kt LixBackgroundStore.kt LixBackgroundWorker.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
           mkdir -p build-app/app/src/main/res/xml build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           python3 lix/focused_godot_ui_patch.py
