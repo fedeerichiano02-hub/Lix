@@ -3,8 +3,8 @@ from pathlib import Path
 main = Path("build-app/app/src/main/java/com/example/llama/MainActivity.kt")
 s = main.read_text()
 
-# Fast local inference: keep the small model, minimize prompt overhead, and cap normal replies.
-s = s.replace("models/lix-qwen3-1.7b-q4_k_m.gguf", "models/lix-qwen3-0.6b-q4_0.gguf")
+# Fast local inference: keep the packaged 1.7B model and minimize prompt overhead.
+# IMPORTANT: never rewrite the model filename here; the build verifies this exact asset.
 s = s.replace('append(memory.take(3500))', 'append(memory.takeLast(1000))')
 s = s.replace('append(learning.takeLast(3500))', 'append(learning.takeLast(900))')
 s = s.replace('append(fileText.take(12000))', 'append(fileText.take(2500))')
