@@ -9,7 +9,11 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.arm.aichat.AiChat
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
@@ -21,6 +25,7 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
         private const val CHANNEL = "lix_background"
         private const val NOTIFICATION_ID = 7010
         private const val CHECKPOINT_EVERY_CHUNKS = 20
+        private const val HEARTBEAT_MS = 5000L
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -28,7 +33,7 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
         val notification = Notification.Builder(applicationContext, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_popup_sync)
             .setContentTitle("Lix está trabajando en segundo plano")
-            .setContentText("Podés salir de Lix y seguir con otras tareas.")
+            .setContentText("Lix mantiene un seguimiento de la actividad de la tarea.")
             .setOngoing(true)
             .build()
         return if (android.os.Build.VERSION.SDK_INT >= 29)
@@ -39,45 +44,128 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
     override suspend fun doWork(): Result {
         val id = inputData.getString(KEY_ID) ?: return Result.failure()
         val prompt = inputData.getString(KEY_PROMPT) ?: return Result.failure()
-        LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "queued"))
+        val started = System.currentTimeMillis()
+        LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "queued", progress = 0, phase = "En cola", lastActivity = started, startedAt = started))
+        var heartbeat: Job? = null
         return try {
             setForeground(getForegroundInfo())
-            LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "running"))
+            checkpoint(id, prompt, "running", 5, "Iniciando trabajador Godot")
+            heartbeat = launch {
+                while (isActive) {
+                    delay(HEARTBEAT_MS)
+                    checkpoint(id, prompt, "running", currentProgress(id), currentPhase(id))
+                }
+            }
+
+            if (!LixProjectManager.hasAuthorizedProject(applicationContext)) {
+                val message = "No hay un proyecto Godot autorizado. Elegí la carpeta del proyecto antes de ejecutar tareas de desarrollo."
+                checkpoint(id, prompt, "needs_user", 0, "Esperando autorización del proyecto", message, finished = true)
+                notifyDone(message)
+                return Result.failure()
+            }
+
+            checkpoint(id, prompt, "running", 10, "Inspeccionando proyecto Godot")
+            val workspace = LixProjectManager.snapshotForPrompt(applicationContext)
+            if (workspace.startsWith("No hay un proyecto Godot autorizado")) {
+                val message = "Lix no pudo leer el proyecto Godot autorizado."
+                checkpoint(id, prompt, "failed", 0, "No se pudo leer el proyecto", message, finished = true)
+                notifyDone(message)
+                return Result.failure()
+            }
 
             val model = File(applicationContext.filesDir, "models/lix-qwen3-1.7b-q4_k_m.gguf")
             if (!model.exists()) {
+                checkpoint(id, prompt, "running", 15, "Preparando modelo local")
                 model.parentFile?.mkdirs()
                 applicationContext.assets.open("models/lix-qwen3-1.7b-q4_k_m.gguf").use { src ->
                     FileOutputStream(model).use { dst -> src.copyTo(dst) }
                 }
             }
 
+            checkpoint(id, prompt, "running", 20, "Cargando modelo local")
             val engine = AiChat.getInferenceEngine(applicationContext)
             engine.loadModel(model.absolutePath)
-            engine.setSystemPrompt("Sos Lix, asistente de desarrollo. Trabajás de forma autónoma sobre la tarea solicitada. Respondé en español argentino. No inventes archivos ni resultados. Si la tarea involucra Godot, inspeccioná primero el proyecto y respetá los sistemas existentes. Guardá avances y explicá claramente qué hiciste y qué quedó pendiente.")
+            engine.setSystemPrompt("Sos Lix, asistente de desarrollo. Trabajás de forma autónoma sobre la tarea solicitada. Respondé en español argentino. No inventes archivos ni resultados. Si la tarea involucra Godot, inspeccioná primero el proyecto y respetá los sistemas existentes. En tareas de proyecto, generá operaciones FILE reales para modificar el proyecto autorizado y verificá el resultado. Guardá avances y explicá claramente qué hiciste y qué quedó pendiente.")
 
+            checkpoint(id, prompt, "running", 30, "Trabajando sobre el proyecto Godot")
             val result = StringBuilder()
             var chunks = 0
             engine.sendUserPrompt(prompt).collect { piece ->
                 result.append(piece)
                 chunks++
                 if (chunks % CHECKPOINT_EVERY_CHUNKS == 0) {
-                    LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "running", result.toString()))
+                    val p = (30 + (chunks / CHECKPOINT_EVERY_CHUNKS).coerceAtMost(60)).coerceAtMost(90)
+                    checkpoint(id, prompt, "running", p, "Generando e implementando cambios")
+                    LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "running", result.toString(), p, "Generando e implementando cambios", System.currentTimeMillis(), started, 0L))
                 }
             }
 
             val answer = result.toString()
                 .replace(Regex("<think>[\\s\\S]*?</think>", RegexOption.IGNORE_CASE), "")
                 .trim()
-            LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "completed", answer))
-            notifyDone(answer)
-            Result.success()
+
+            checkpoint(id, prompt, "running", 92, "Escribiendo cambios en Godot")
+            val applied = LixGodotAgent.applyOperations(applicationContext, answer)
+            checkpoint(id, prompt, "running", 96, "Verificando archivos del proyecto")
+            val verification = LixProjectManager.snapshotForPrompt(applicationContext)
+            val taskState = when {
+                Regex("TASK_STATE:\\s*WAITING_EXTERNAL", RegexOption.IGNORE_CASE).containsMatchIn(answer) -> "waiting_external"
+                Regex("TASK_STATE:\\s*NEEDS_USER", RegexOption.IGNORE_CASE).containsMatchIn(answer) -> "needs_user"
+                Regex("TASK_STATE:\\s*FAILED", RegexOption.IGNORE_CASE).containsMatchIn(answer) -> "failed"
+                else -> "completed"
+            }
+            val finalMessage = buildString {
+                append(answer)
+                append("\n\nCambios aplicados realmente al proyecto: ").append(applied)
+                append("\nProyecto verificado después de la tarea: ").append(!verification.startsWith("No hay un proyecto Godot autorizado"))
+            }.trim()
+            checkpoint(id, prompt, taskState, if (taskState == "completed") 100 else 96, finalPhase(taskState), finalMessage, finished = true)
+            notifyDone(finalMessage)
+            if (taskState == "completed") Result.success() else Result.failure()
         } catch (t: Throwable) {
             val message = t.message ?: "error desconocido"
-            LixBackgroundStore.upsert(applicationContext, LixBackgroundStore.Task(id, prompt, "failed", message))
+            checkpoint(id, prompt, "failed", 0, "Error", message, finished = true)
             notifyDone("La tarea no pudo terminar: $message")
             Result.failure()
+        } finally {
+            heartbeat?.cancel()
         }
+    }
+
+    private fun checkpoint(
+        id: String,
+        prompt: String,
+        status: String,
+        progress: Int,
+        phase: String,
+        result: String = "",
+        finished: Boolean = false
+    ) {
+        val now = System.currentTimeMillis()
+        val previous = LixBackgroundStore.latest(applicationContext, 40).lastOrNull { it.id == id }
+        LixBackgroundStore.upsert(
+            applicationContext,
+            LixBackgroundStore.Task(
+                id = id,
+                prompt = prompt,
+                status = status,
+                result = if (result.isNotBlank()) result else previous?.result.orEmpty(),
+                progress = progress,
+                phase = phase,
+                lastActivity = now,
+                startedAt = previous?.startedAt?.takeIf { it > 0 } ?: now,
+                finishedAt = if (finished) now else 0L
+            )
+        )
+    }
+
+    private fun currentProgress(id: String): Int = LixBackgroundStore.latest(applicationContext, 40).lastOrNull { it.id == id }?.progress ?: 0
+    private fun currentPhase(id: String): String = LixBackgroundStore.latest(applicationContext, 40).lastOrNull { it.id == id }?.phase ?: "Trabajando"
+    private fun finalPhase(status: String): String = when (status) {
+        "completed" -> "Completada y verificada"
+        "waiting_external" -> "Esperando servicio externo"
+        "needs_user" -> "Necesita intervención del usuario"
+        else -> "Finalizada con error"
     }
 
     private fun createChannel() {
