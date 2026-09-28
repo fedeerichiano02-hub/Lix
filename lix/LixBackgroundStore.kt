@@ -9,7 +9,17 @@ object LixBackgroundStore {
     private const val PREFS = "lix_background"
     private const val TASKS = "tasks"
     private const val MAX_TASKS = 40
-    data class Task(val id: String, val prompt: String, val status: String, val result: String = "")
+    data class Task(
+        val id: String,
+        val prompt: String,
+        val status: String,
+        val result: String = "",
+        val progress: Int = 0,
+        val phase: String = "",
+        val lastActivity: Long = 0L,
+        val startedAt: Long = 0L,
+        val finishedAt: Long = 0L
+    )
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     @Synchronized fun upsert(context: Context, task: Task) {
@@ -30,7 +40,7 @@ object LixBackgroundStore {
         for (i in all.length() - 1 downTo 0) {
             val o = all.optJSONObject(i) ?: continue
             if (o.optString("status") == "queued" || o.optString("status") == "running")
-                return Task(o.optString("id"), o.optString("prompt"), o.optString("status"), o.optString("result"))
+                return fromJson(o)
         }
         return null
     }
@@ -40,12 +50,32 @@ object LixBackgroundStore {
         val result = mutableListOf<Task>()
         for (i in maxOf(0, all.length() - limit) until all.length()) {
             val o = all.optJSONObject(i) ?: continue
-            result += Task(o.optString("id"), o.optString("prompt"), o.optString("status"), o.optString("result"))
+            result += fromJson(o)
         }
         return result
     }
 
+    private fun fromJson(o: JSONObject) = Task(
+        id = o.optString("id"),
+        prompt = o.optString("prompt"),
+        status = o.optString("status"),
+        result = o.optString("result"),
+        progress = o.optInt("progress", 0),
+        phase = o.optString("phase"),
+        lastActivity = o.optLong("lastActivity", 0L),
+        startedAt = o.optLong("startedAt", 0L),
+        finishedAt = o.optLong("finishedAt", 0L)
+    )
+
     private fun toJson(task: Task) = JSONObject().apply {
-        put("id", task.id); put("prompt", task.prompt); put("status", task.status); put("result", task.result)
+        put("id", task.id)
+        put("prompt", task.prompt)
+        put("status", task.status)
+        put("result", task.result)
+        put("progress", task.progress.coerceIn(0, 100))
+        put("phase", task.phase)
+        put("lastActivity", task.lastActivity)
+        put("startedAt", task.startedAt)
+        put("finishedAt", task.finishedAt)
     }
 }
