@@ -1,6 +1,6 @@
 package com.example.llama
 
-import android.app.Activity
+import android.content.Context
 
 /**
  * Lix Godot specialist. It orchestrates the complete game-production workflow:
@@ -28,8 +28,8 @@ object LixGodotAgent {
         return godotTerms.any { q.contains(it) } && actionTerms.any { q.contains(it) }
     }
 
-    fun workspacePrompt(activity: Activity, userPrompt: String, verification: Boolean = false): String {
-        val snapshot = LixProjectManager.snapshotForPrompt(activity)
+    fun workspacePrompt(context: Context, userPrompt: String, verification: Boolean = false): String {
+        val snapshot = LixProjectManager.snapshotForPrompt(context)
         val mode = if (verification) "REVISIÓN, PRUEBA Y CORRECCIÓN" else "IMPLEMENTACIÓN COMPLETA"
         return """
 SOS LIX, AGENTE ESPECIALIZADO EN GODOT 4.x PARA DESARROLLO DE JUEGOS.
@@ -54,6 +54,8 @@ REGLAS DE TRABAJO:
 10. Guardá el trabajo en checkpoints persistentes cuando el sistema de tareas lo permita.
 11. Priorizá rendimiento móvil: renderer Mobile, cargas diferidas, recursos comprimidos, geometría razonable y evitar procesos permanentes innecesarios.
 12. El resultado debe quedar listo para que el usuario pueda abrir Godot y probarlo.
+13. Si recibís una tarea en segundo plano, NO te limites a explicar qué habría que hacer: generá las operaciones FILE necesarias para modificar realmente el proyecto autorizado.
+14. Al final, informá qué archivos cambiaste, qué comprobaste y qué quedó pendiente. Nunca afirmes que modificaste Godot si no generaste operaciones FILE válidas.
 
 OPERACIONES DE ARCHIVOS:
 FILE: ruta/relativa.ext
@@ -70,13 +72,13 @@ TASK_STATE: COMPLETE | WAITING_EXTERNAL | NEEDS_USER | FAILED
 """.trimIndent()
     }
 
-    fun applyOperations(activity: Activity, text: String): Int {
+    fun applyOperations(context: Context, text: String): Int {
         var count = 0
         val regex = Regex("(?s)FILE:\\s*([^\\n]+)\\n```(?:text|gdscript|gd|kotlin|ini|json|tscn|tres|glsl|shader)?\\n(.*?)```")
         for (m in regex.findAll(text)) {
             val path = m.groupValues[1].trim().replace('\\', '/')
             if (path.isBlank() || path.startsWith("/") || path.contains("..")) continue
-            if (LixProjectManager.writeAuthorizedFile(activity, path, m.groupValues[2])) count++
+            if (LixProjectManager.writeAuthorizedFile(context, path, m.groupValues[2])) count++
         }
         return count
     }
