@@ -14,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
 import java.io.File
 import java.io.FileOutputStream
 
@@ -50,7 +51,7 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
         return try {
             setForeground(getForegroundInfo())
             checkpoint(id, prompt, "running", 5, "Iniciando trabajador Godot")
-            heartbeat = launch {
+            heartbeat = kotlinx.coroutines.CoroutineScope(currentCoroutineContext()).launch {
                 while (isActive) {
                     delay(HEARTBEAT_MS)
                     checkpoint(id, prompt, "running", currentProgress(id), currentPhase(id))
