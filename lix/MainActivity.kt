@@ -6,10 +6,13 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -18,7 +21,19 @@ import androidx.appcompat.app.AppCompatActivity
 class MainActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private lateinit var input: EditText
+    private lateinit var taskState: TextView
+    private lateinit var taskPhase: TextView
+    private lateinit var taskActivity: TextView
+    private lateinit var taskProgressLabel: TextView
+    private lateinit var taskProgress: ProgressBar
     private var pending3dPrompt = "Crear personaje 3D para Godot"
+    private val monitorHandler = Handler(Looper.getMainLooper())
+    private val monitorRunnable = object : Runnable {
+        override fun run() {
+            refreshTaskMonitor()
+            monitorHandler.postDelayed(this, 1000L)
+        }
+    }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -54,6 +69,12 @@ class MainActivity : AppCompatActivity() {
         window.statusBarColor = Color.rgb(8, 10, 15)
         window.navigationBarColor = Color.rgb(8, 10, 15)
         buildUi()
+        monitorHandler.post(monitorRunnable)
+    }
+
+    override fun onDestroy() {
+        monitorHandler.removeCallbacks(monitorRunnable)
+        super.onDestroy()
     }
 
     private fun buildUi() {
@@ -97,6 +118,8 @@ class MainActivity : AppCompatActivity() {
             background = card(Color.rgb(16, 20, 27))
         }
         root.addView(status, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(10) })
+
+        root.addView(buildTaskMonitor(), LinearLayout.LayoutParams(-1, dp(158)).apply { bottomMargin = dp(10) })
 
         val scroll = ScrollView(this).apply { overScrollMode = View.OVER_SCROLL_NEVER }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -175,11 +198,68 @@ class MainActivity : AppCompatActivity() {
         setContentView(root)
     }
 
+    private fun buildTaskMonitor(): View {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = card(Color.rgb(15, 19, 27))
+        }
+        val titleRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        titleRow.addView(TextView(this).apply {
+            text = "📊  Monitor de tarea"
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }, LinearLayout.LayoutParams(0, dp(28), 1f))
+        taskState = TextView(this).apply {
+            text = "Sin tarea"
+            textSize = 11f
+            setTextColor(Color.rgb(155, 165, 180))
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        titleRow.addView(taskState, LinearLayout.LayoutParams(dp(150), dp(28)))
+        box.addView(titleRow)
+
+        taskPhase = TextView(this).apply {
+            text = "Lix está lista"
+            textSize = 10f
+            setTextColor(Color.rgb(160, 170, 185))
+        }
+        box.addView(taskPhase)
+
+        taskProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progress = 0
+        }
+        box.addView(taskProgress, LinearLayout.LayoutParams(-1, dp(8)).apply { topMargin = dp(8); bottomMargin = dp(4) })
+
+        taskProgressLabel = TextView(this).apply {
+            text = "0% · progreso por etapas"
+            textSize = 9f
+            setTextColor(Color.rgb(125, 135, 150))
+        }
+        box.addView(taskProgressLabel)
+
+        taskActivity = TextView(this).apply {
+            text = "Última actividad: —"
+            textSize = 9f
+            setTextColor(Color.rgb(125, 135, 150))
+        }
+        box.addView(taskActivity)
+        return box
+    }
+
     private fun queueTask() {
         val prompt = input.text.toString().trim()
         if (prompt.isBlank()) {
             Toast.makeText(this, "Escribí primero qué querés que Lix haga.", Toast.LENGTH_SHORT).show()
             input.requestFocus()
+            return
+        }
+        if (!LixProjectManager.hasAuthorizedProject(this)) {
+            status.text = "Necesitás autorizar primero un proyecto Godot"
+            Toast.makeText(this, "Primero elegí la carpeta de tu proyecto Godot.", Toast.LENGTH_LONG).show()
+            LixAutomation.handle(this, "elegir proyecto godot")
             return
         }
         val id = "godot_${System.currentTimeMillis()}"
@@ -192,10 +272,85 @@ class MainActivity : AppCompatActivity() {
             .addTag("lix_godot")
             .build()
         androidx.work.WorkManager.getInstance(this).enqueue(request)
-        LixBackgroundStore.upsert(this, LixBackgroundStore.Task(id, prompt, "queued"))
+        val now = System.currentTimeMillis()
+        LixBackgroundStore.upsert(this, LixBackgroundStore.Task(id, prompt, "queued", progress = 0, phase = "En cola", lastActivity = now, startedAt = now))
         input.setText("")
-        status.text = "Tarea enviada · Lix puede seguir trabajando en segundo plano"
-        Toast.makeText(this, "Tarea enviada.", Toast.LENGTH_SHORT).show()
+        status.text = "Tarea enviada · el monitor mostrará si sigue activa o se queda sin actividad"
+        Toast.makeText(this, "Tarea enviada. Mirá el monitor para ver su estado real.", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun refreshTaskMonitor() {
+        val task = LixBackgroundStore.pending(this) ?: LixBackgroundStore.latest(this, 1).firstOrNull()
+        if (task == null) {
+            taskState.text = "Sin tarea"
+            taskState.setTextColor(Color.rgb(155, 165, 180))
+            taskPhase.text = "Lix está lista"
+            taskProgress.progress = 0
+            taskProgressLabel.text = "0% · progreso por etapas"
+            taskActivity.text = "Última actividad: —"
+            return
+        }
+
+        val now = System.currentTimeMillis()
+        val age = if (task.lastActivity > 0) now - task.lastActivity else Long.MAX_VALUE
+        val displayStatus: String
+        val statusColor: Int
+        when (task.status) {
+            "queued" -> {
+                displayStatus = "🟡 EN COLA"
+                statusColor = Color.rgb(240, 190, 70)
+            }
+            "running" -> {
+                if (age <= 15000L) {
+                    displayStatus = "🟢 TRABAJANDO"
+                    statusColor = Color.rgb(70, 225, 125)
+                } else if (age <= 60000L) {
+                    displayStatus = "🟡 SIN ACTIVIDAD"
+                    statusColor = Color.rgb(240, 190, 70)
+                } else {
+                    displayStatus = "🔴 POSIBLEMENTE TRABADA"
+                    statusColor = Color.rgb(245, 90, 90)
+                }
+            }
+            "completed" -> {
+                displayStatus = "✅ COMPLETADA"
+                statusColor = Color.rgb(70, 225, 125)
+            }
+            "waiting_external" -> {
+                displayStatus = "🟠 ESPERA EXTERNA"
+                statusColor = Color.rgb(240, 160, 70)
+            }
+            "needs_user" -> {
+                displayStatus = "🟣 NECESITA ACCIÓN"
+                statusColor = Color.rgb(190, 130, 245)
+            }
+            "failed" -> {
+                displayStatus = "❌ ERROR"
+                statusColor = Color.rgb(245, 90, 90)
+            }
+            else -> {
+                displayStatus = task.status.uppercase()
+                statusColor = Color.rgb(155, 165, 180)
+            }
+        }
+        taskState.text = displayStatus
+        taskState.setTextColor(statusColor)
+        taskPhase.text = task.phase.ifBlank { "Trabajando sobre el proyecto Godot" }
+        taskProgress.progress = task.progress.coerceIn(0, 100)
+        taskProgressLabel.text = "${task.progress.coerceIn(0, 100)}% · progreso por etapas, no tiempo restante"
+        taskActivity.text = if (task.lastActivity > 0) "Última actividad: ${formatAge(age)}" else "Última actividad: —"
+
+        if (task.status == "completed") status.text = "Tarea completada y proyecto verificado"
+        else if (task.status == "failed") status.text = "La tarea terminó con error"
+        else if (task.status == "needs_user") status.text = "Lix necesita una acción tuya"
+        else if (task.status == "waiting_external") status.text = "Lix está esperando un servicio externo"
+    }
+
+    private fun formatAge(age: Long): String = when {
+        age < 1000L -> "ahora"
+        age < 60000L -> "hace ${age / 1000L}s"
+        age < 3600000L -> "hace ${age / 60000L}m"
+        else -> "hace ${age / 3600000L}h"
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -207,7 +362,13 @@ class MainActivity : AppCompatActivity() {
             LixImageTo3D.start(this, uri, pending3dPrompt)
             status.text = "Generando personaje 3D..."
         } else if (requestCode == 4201) {
-            status.text = "Proyecto Godot autorizado"
+            val uri = data.data ?: return
+            try {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            } catch (_: Exception) { }
+            getSharedPreferences("lix", MODE_PRIVATE).edit().putString(LixAutomation.PREF_TREE_URI, uri.toString()).apply()
+            status.text = "Proyecto Godot autorizado correctamente"
+            Toast.makeText(this, "Proyecto Godot autorizado.", Toast.LENGTH_SHORT).show()
         } else if (requestCode == 4103) {
             status.text = "Asset seleccionado · listo para incorporar"
             Toast.makeText(this, "Asset seleccionado.", Toast.LENGTH_SHORT).show()
