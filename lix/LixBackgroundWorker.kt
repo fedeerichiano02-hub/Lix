@@ -89,9 +89,14 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
             engine.setSystemPrompt("Sos Lix, asistente de desarrollo. Trabajás de forma autónoma sobre la tarea solicitada. Respondé en español argentino. No inventes archivos ni resultados. Si la tarea involucra Godot, inspeccioná primero el proyecto y respetá los sistemas existentes. En tareas de proyecto, generá operaciones FILE reales para modificar el proyecto autorizado y verificá el resultado. Guardá avances y explicá claramente qué hiciste y qué quedó pendiente.")
 
             checkpoint(id, prompt, "running", 30, "Trabajando sobre el proyecto Godot")
+            // Critical: send the actual Godot-agent workflow, including the authorized
+            // workspace snapshot and FILE operation contract. Previously this snapshot
+            // was computed but never included in the model prompt, so the model could
+            // answer conversationally while the worker still reported completion.
+            val agentPrompt = LixGodotAgent.workspacePrompt(applicationContext, prompt)
             val result = StringBuilder()
             var chunks = 0
-            engine.sendUserPrompt(prompt).collect { piece ->
+            engine.sendUserPrompt(agentPrompt).collect { piece ->
                 result.append(piece)
                 chunks++
                 if (chunks % CHECKPOINT_EVERY_CHUNKS == 0) {
@@ -109,16 +114,31 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
             val applied = LixGodotAgent.applyOperations(applicationContext, answer)
             checkpoint(id, prompt, "running", 96, "Verificando archivos del proyecto")
             val verification = LixProjectManager.snapshotForPrompt(applicationContext)
-            val taskState = when {
+
+            val explicitState = when {
+                Regex("TASK_STATE:\\s*(?:COMPLETE|COMPLETED)", RegexOption.IGNORE_CASE).containsMatchIn(answer) -> "completed"
                 Regex("TASK_STATE:\\s*WAITING_EXTERNAL", RegexOption.IGNORE_CASE).containsMatchIn(answer) -> "waiting_external"
                 Regex("TASK_STATE:\\s*NEEDS_USER", RegexOption.IGNORE_CASE).containsMatchIn(answer) -> "needs_user"
                 Regex("TASK_STATE:\\s*FAILED", RegexOption.IGNORE_CASE).containsMatchIn(answer) -> "failed"
-                else -> "completed"
+                else -> ""
             }
+
+            // A background Godot task cannot be considered completed merely because
+            // the model produced text. At least one real FILE operation must have
+            // been applied, unless the task explicitly requires no file changes.
+            val taskState = when {
+                explicitState.isNotBlank() && explicitState != "completed" -> explicitState
+                applied > 0 && !verification.startsWith("No hay un proyecto Godot autorizado") -> "completed"
+                else -> "failed"
+            }
+
             val finalMessage = buildString {
                 append(answer)
                 append("\n\nCambios aplicados realmente al proyecto: ").append(applied)
                 append("\nProyecto verificado después de la tarea: ").append(!verification.startsWith("No hay un proyecto Godot autorizado"))
+                if (taskState == "failed" && applied == 0) {
+                    append("\n\nIMPORTANTE: Lix no aplicó ningún cambio de archivo. La tarea NO se considera completada.")
+                }
             }.trim()
             checkpoint(id, prompt, taskState, if (taskState == "completed") 100 else 96, finalPhase(taskState), finalMessage, finished = true)
             notifyDone(finalMessage)
