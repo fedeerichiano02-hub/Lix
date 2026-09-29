@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var taskActivity: TextView
     private lateinit var taskProgressLabel: TextView
     private lateinit var taskProgress: ProgressBar
+    private lateinit var taskDetailsButton: TextView
     private var pending3dPrompt = "Crear personaje 3D para Godot"
     private val monitorHandler = Handler(Looper.getMainLooper())
     private val monitorRunnable = object : Runnable {
@@ -119,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(status, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(10) })
 
-        root.addView(buildTaskMonitor(), LinearLayout.LayoutParams(-1, dp(158)).apply { bottomMargin = dp(10) })
+        root.addView(buildTaskMonitor(), LinearLayout.LayoutParams(-1, dp(206)).apply { bottomMargin = dp(10) })
 
         val scroll = ScrollView(this).apply { overScrollMode = View.OVER_SCROLL_NEVER }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -246,6 +247,29 @@ class MainActivity : AppCompatActivity() {
             setTextColor(Color.rgb(125, 135, 150))
         }
         box.addView(taskActivity)
+
+        taskDetailsButton = TextView(this).apply {
+            text = "🔎  VER DETALLES DEL ERROR"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            background = card(Color.rgb(38, 44, 56))
+            visibility = View.GONE
+            setPadding(0, dp(8), 0, dp(8))
+            setOnClickListener {
+                val current = LixBackgroundStore.pending(this@MainActivity)
+                    ?: LixBackgroundStore.latest(this@MainActivity, 1).firstOrNull()
+                if (current == null) {
+                    Toast.makeText(this@MainActivity, "No hay un registro de tarea disponible.", Toast.LENGTH_SHORT).show()
+                } else {
+                    startActivity(Intent(this@MainActivity, LixTaskDetailsActivity::class.java).apply {
+                        putExtra("task_id", current.id)
+                    })
+                }
+            }
+        }
+        box.addView(taskDetailsButton, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
         return box
     }
 
@@ -288,6 +312,7 @@ class MainActivity : AppCompatActivity() {
             taskProgress.progress = 0
             taskProgressLabel.text = "0% · progreso por etapas"
             taskActivity.text = "Última actividad: —"
+            taskDetailsButton.visibility = View.GONE
             return
         }
 
@@ -339,6 +364,7 @@ class MainActivity : AppCompatActivity() {
         taskProgress.progress = task.progress.coerceIn(0, 100)
         taskProgressLabel.text = "${task.progress.coerceIn(0, 100)}% · progreso por etapas, no tiempo restante"
         taskActivity.text = if (task.lastActivity > 0) "Última actividad: ${formatAge(age)}" else "Última actividad: —"
+        taskDetailsButton.visibility = if (task.status == "failed") View.VISIBLE else View.GONE
 
         if (task.status == "completed") status.text = "Tarea completada y proyecto verificado"
         else if (task.status == "failed") status.text = "La tarea terminó con error"
