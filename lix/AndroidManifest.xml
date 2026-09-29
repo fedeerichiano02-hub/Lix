@@ -27,6 +27,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".LixTaskDetailsActivity"
+            android:exported="false" />
+
         <!-- WorkManager usa este servicio para mantener las tareas largas de Lix en primer plano.
              Android 14+ exige que el tipo usado por ForegroundInfo esté declarado aquí. -->
         <service

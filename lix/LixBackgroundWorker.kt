@@ -3,7 +3,9 @@ package com.example.llama
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ServiceInfo
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -61,7 +63,7 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
             if (!LixProjectManager.hasAuthorizedProject(applicationContext)) {
                 val message = "No hay un proyecto Godot autorizado. Elegí la carpeta del proyecto antes de ejecutar tareas de desarrollo."
                 checkpoint(id, prompt, "needs_user", 0, "Esperando autorización del proyecto", message, finished = true)
-                notifyDone(message)
+                notifyDone(id, message)
                 return Result.failure()
             }
 
@@ -70,7 +72,7 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
             if (workspace.startsWith("No hay un proyecto Godot autorizado")) {
                 val message = "Lix no pudo leer el proyecto Godot autorizado."
                 checkpoint(id, prompt, "failed", 0, "No se pudo leer el proyecto", message, finished = true)
-                notifyDone(message)
+                notifyDone(id, message)
                 return Result.failure()
             }
 
@@ -89,10 +91,6 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
             engine.setSystemPrompt("Sos Lix, asistente de desarrollo. Trabajás de forma autónoma sobre la tarea solicitada. Respondé en español argentino. No inventes archivos ni resultados. Si la tarea involucra Godot, inspeccioná primero el proyecto y respetá los sistemas existentes. En tareas de proyecto, generá operaciones FILE reales para modificar el proyecto autorizado y verificá el resultado. Guardá avances y explicá claramente qué hiciste y qué quedó pendiente.")
 
             checkpoint(id, prompt, "running", 30, "Trabajando sobre el proyecto Godot")
-            // Critical: send the actual Godot-agent workflow, including the authorized
-            // workspace snapshot and FILE operation contract. Previously this snapshot
-            // was computed but never included in the model prompt, so the model could
-            // answer conversationally while the worker still reported completion.
             val agentPrompt = LixGodotAgent.workspacePrompt(applicationContext, prompt)
             val result = StringBuilder()
             var chunks = 0
@@ -123,9 +121,6 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
                 else -> ""
             }
 
-            // A background Godot task cannot be considered completed merely because
-            // the model produced text. At least one real FILE operation must have
-            // been applied, unless the task explicitly requires no file changes.
             val taskState = when {
                 explicitState.isNotBlank() && explicitState != "completed" -> explicitState
                 applied > 0 && !verification.startsWith("No hay un proyecto Godot autorizado") -> "completed"
@@ -141,12 +136,16 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
                 }
             }.trim()
             checkpoint(id, prompt, taskState, if (taskState == "completed") 100 else 96, finalPhase(taskState), finalMessage, finished = true)
-            notifyDone(finalMessage)
+            notifyDone(id, finalMessage)
             if (taskState == "completed") Result.success() else Result.failure()
         } catch (t: Throwable) {
-            val message = t.message ?: "error desconocido"
-            checkpoint(id, prompt, "failed", 0, "Error", message, finished = true)
-            notifyDone("La tarea no pudo terminar: $message")
+            val message = buildString {
+                append(t::class.java.simpleName)
+                append(": ")
+                append(t.message ?: "error desconocido")
+            }
+            checkpoint(id, prompt, "failed", 96, "Error", message, finished = true)
+            notifyDone(id, "La tarea no pudo terminar: $message")
             Result.failure()
         } finally {
             heartbeat?.cancel()
@@ -197,12 +196,22 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
         }
     }
 
-    private fun notifyDone(text: String) {
+    private fun notifyDone(taskId: String, text: String) {
         val manager = applicationContext.getSystemService(NotificationManager::class.java)
+        val intent = Intent(applicationContext, LixTaskDetailsActivity::class.java).apply {
+            putExtra("task_id", taskId)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+            if (android.os.Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0
+        val detailsIntent = PendingIntent.getActivity(applicationContext, taskId.hashCode(), intent, flags)
         manager.notify(NOTIFICATION_ID + 1, Notification.Builder(applicationContext, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_popup_sync)
             .setContentTitle("Lix terminó una tarea")
             .setContentText(text.take(180))
+            .setStyle(Notification.BigTextStyle().bigText(text.take(4000)))
+            .setContentIntent(detailsIntent)
+            .addAction(Notification.Action.Builder(null, "Ver detalles", detailsIntent).build())
             .setAutoCancel(true)
             .build())
     }
