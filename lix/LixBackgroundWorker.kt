@@ -104,12 +104,52 @@ class LixBackgroundWorker(appContext: Context, params: WorkerParameters) : Corou
                 }
             }
 
-            val answer = result.toString()
+            var answer = result.toString()
                 .replace(Regex("<think>[\\s\\S]*?</think>", RegexOption.IGNORE_CASE), "")
                 .trim()
 
             checkpoint(id, prompt, "running", 92, "Escribiendo cambios en Godot")
-            val applied = LixGodotAgent.applyOperations(applicationContext, answer)
+            var applied = LixGodotAgent.applyOperations(applicationContext, answer)
+
+            // Small local models sometimes echo the instructions instead of emitting FILE blocks.
+            // Give the same model one focused repair pass before declaring the task failed.
+            if (applied == 0) {
+                checkpoint(id, prompt, "running", 94, "Corrigiendo formato de archivos Godot")
+                val repairPrompt = """
+La tarea Godot NO fue aplicada porque tu respuesta anterior no produjo ninguna operación FILE.
+
+TAREA ORIGINAL:
+$prompt
+
+PROYECTO AUTORIZADO:
+$workspace
+
+HACÉ AHORA LA TAREA DIRECTAMENTE.
+NO expliques cómo hacerlo.
+NO repitas estas instrucciones.
+NO uses texto fuera del formato salvo CHECK y TASK_STATE.
+
+Para CADA archivo que debas crear o modificar, emití exactamente:
+FILE: ruta/relativa.ext
+```text
+CONTENIDO COMPLETO DEL ARCHIVO
+```
+
+Usá rutas relativas al proyecto. Para una escena Godot usá .tscn válido.
+Después de todas las operaciones escribí:
+CHECK: verificá que los archivos sean coherentes con el proyecto.
+TASK_STATE: COMPLETE
+
+Si realmente no podés hacerlo por una dependencia externa, usá TASK_STATE: WAITING_EXTERNAL.
+""".trimIndent()
+                val repair = StringBuilder()
+                engine.sendUserPrompt(repairPrompt).collect { piece -> repair.append(piece) }
+                answer = repair.toString()
+                    .replace(Regex("<think>[\\s\\S]*?</think>", RegexOption.IGNORE_CASE), "")
+                    .trim()
+                applied = LixGodotAgent.applyOperations(applicationContext, answer)
+            }
+
             checkpoint(id, prompt, "running", 96, "Verificando archivos del proyecto")
             val verification = LixProjectManager.snapshotForPrompt(applicationContext)
 
