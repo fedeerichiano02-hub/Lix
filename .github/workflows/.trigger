@@ -1,1 +1,1 @@
-Trigger Actions after workflow syntax fix.
+Trigger complete Lix APK build automatically.
