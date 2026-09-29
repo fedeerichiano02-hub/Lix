@@ -39,7 +39,7 @@ jobs:
           cp -a llama.cpp/examples/llama.android/. build-app/
           # Use the complete focused Godot MainActivity directly. Do not restore the obsolete old UI.
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          for f in LixAutomation.kt LixProjectManager.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixImageTo3D.kt LixBackgroundStore.kt LixBackgroundWorker.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
+          for f in LixAutomation.kt LixProjectManager.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixImageTo3D.kt LixBackgroundStore.kt LixBackgroundWorker.kt LixTaskDetailsActivity.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
           mkdir -p build-app/app/src/main/res/xml build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           python3 lix/focused_godot_ui_patch.py
           sed -i 's/\.toDrawable()//g' build-app/app/src/main/java/com/example/llama/MainActivity.kt
@@ -87,8 +87,10 @@ jobs:
           test -f build-app/app/src/main/java/com/example/llama/LixGodotWorkspace.kt
           test -f build-app/app/src/main/java/com/example/llama/LixGodotAssetRuntime.kt
           test -f build-app/app/src/main/java/com/example/llama/LixBackgroundWorker.kt
+          test -f build-app/app/src/main/java/com/example/llama/LixTaskDetailsActivity.kt
           grep -F 'Lix · Godot' build-app/app/src/main/java/com/example/llama/MainActivity.kt
           grep -F 'LixImageTo3D.start' build-app/app/src/main/java/com/example/llama/MainActivity.kt
+          grep -F 'LixTaskDetailsActivity' build-app/app/src/main/AndroidManifest.xml
           if grep -R -n -F 'lix-qwen3-0.6b-q4_0.gguf' build-app/app/src/main lix --exclude-dir=.git; then exit 1; fi
       - name: Build
         working-directory: build-app
