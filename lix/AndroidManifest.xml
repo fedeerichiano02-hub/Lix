@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -16,28 +14,27 @@
         android:roundIcon="@drawable/lix_icon"
         android:supportsRtl="true"
         android:theme="@style/Theme.AiChatSample">
-
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+        <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".LixTaskDetailsActivity"
-            android:exported="false" />
-
-        <!-- WorkManager usa este servicio para mantener las tareas largas de Lix en primer plano.
-             Android 14+ exige que el tipo usado por ForegroundInfo esté declarado aquí. -->
+        <activity android:name=".LixTaskDetailsActivity" android:exported="false" />
+        <service
+            android:name=".LixAccessibilityService"
+            android:label="Lix - Control de Godot"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/lix_accessibility_service_config" />
+        </service>
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             android:exported="false"
             tools:node="merge" />
-
     </application>
 </manifest>
