@@ -30,7 +30,7 @@ jobs:
           cp -a llama.cpp/examples/llama.android/. build-app
           cp lix/MainActivity.kt build-app/app/src/main/java/com/example/llama/MainActivity.kt
           sed -i 's/\.toDrawable()//g' build-app/app/src/main/java/com/example/llama/MainActivity.kt
-          for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixImageTo3D.kt LixBackgroundStore.kt LixBackgroundWorker.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
+          for f in LixAutomation.kt LixAccessibilityService.kt LixWakeService.kt LixTaskService.kt LixVoiceInteractionService.kt LixVoiceSessionService.kt LixProjectManager.kt LixEvolution.kt LixVisualCreator.kt LixFeatureHub.kt LixFeatureRuntime.kt LixMegaModules.kt LixStage1Core.kt LixCapabilityStore.kt LixGodotAgent.kt LixGodotWorkspace.kt LixGodotAssetRuntime.kt LixImageTo3D.kt LixTextTo3D.kt LixBackgroundStore.kt LixBackgroundWorker.kt LixTaskDetailsActivity.kt; do cp "lix/$f" "build-app/app/src/main/java/com/example/llama/$f"; done
           cp lix/evolution_catalog.json build-app/app/src/main/java/com/example/llama/evolution_catalog.json
           mkdir -p build-app/app/src/main/res/xml build-app/app/src/main/assets/models build-app/app/src/main/res/drawable
           cp lix/accessibility_service_config.xml build-app/app/src/main/res/xml/
