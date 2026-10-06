@@ -1,3 +1,21 @@
+import android.app.Activity
+import android.app.AlertDialog
+import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
+
 object LixTextTo3D {
     private const val API = "https://lix-3d-proxy.workers.dev/text-to-3d"
     private const val RIG_API = "https://lix-3d-proxy.workers.dev/rigging"
