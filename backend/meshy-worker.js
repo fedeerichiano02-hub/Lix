@@ -22,6 +22,16 @@ export default {
       return proxy("https://api.meshy.ai/openapi/v1/image-to-3d" + suffix, request.method, body, cors, env);
     }
 
+    if (path === "rigging" || path.startsWith("rigging/")) {
+      const suffix = path === "rigging" ? "" : "/" + path.slice("rigging/".length);
+      return proxy("https://api.meshy.ai/openapi/v1/rigging" + suffix, request.method, body, cors, env);
+    }
+
+    if (path === "animations" || path.startsWith("animations/")) {
+      const suffix = path === "animations" ? "" : "/" + path.slice("animations/".length);
+      return proxy("https://api.meshy.ai/openapi/v1/animations" + suffix, request.method, body, cors, env);
+    }
+
     return json({ error: "Ruta no encontrada" }, 404, cors);
   }
 };
