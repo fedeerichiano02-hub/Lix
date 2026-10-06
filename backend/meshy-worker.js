@@ -10,23 +10,34 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname.replace(/^\/+/, "");
-    if (!path.startsWith("image-to-3d")) return json({ error: "Ruta no encontrada" }, 404, cors);
-
-    const suffix = path === "image-to-3d" ? "" : "/" + path.slice("image-to-3d/".length);
-    const target = `https://api.meshy.ai/openapi/v1/image-to-3d${suffix}`;
-    const headers = new Headers({
-      "Authorization": `Bearer ${env.MESHY_API_KEY}`,
-      "Content-Type": "application/json"
-    });
     const body = request.method === "POST" ? await request.text() : undefined;
-    const upstream = await fetch(target, { method: request.method, headers, body });
-    const text = await upstream.text();
-    return new Response(text, {
-      status: upstream.status,
-      headers: { ...cors, "Content-Type": "application/json" }
-    });
+
+    if (path === "text-to-3d" || path.startsWith("text-to-3d/")) {
+      const suffix = path === "text-to-3d" ? "" : "/" + path.slice("text-to-3d/".length);
+      return proxy("https://api.meshy.ai/openapi/v2/text-to-3d" + suffix, request.method, body, cors, env);
+    }
+
+    if (path === "image-to-3d" || path.startsWith("image-to-3d/")) {
+      const suffix = path === "image-to-3d" ? "" : "/" + path.slice("image-to-3d/".length);
+      return proxy("https://api.meshy.ai/openapi/v1/image-to-3d" + suffix, request.method, body, cors, env);
+    }
+
+    return json({ error: "Ruta no encontrada" }, 404, cors);
   }
 };
+
+async function proxy(target, method, body, cors, env) {
+  const headers = new Headers({
+    "Authorization": `Bearer ${env.MESHY_API_KEY}`,
+    "Content-Type": "application/json"
+  });
+  const upstream = await fetch(target, { method, headers, body });
+  const text = await upstream.text();
+  return new Response(text, {
+    status: upstream.status,
+    headers: { ...cors, "Content-Type": "application/json" }
+  });
+}
 
 function json(value, status, cors) {
   return new Response(JSON.stringify(value), {
