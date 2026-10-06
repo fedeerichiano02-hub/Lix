@@ -130,12 +130,9 @@ class MainActivity : AppCompatActivity() {
             content.addView(button(title, desc, action), LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(8) })
         }
 
-        add("👤  Crear personaje 3D", "Elegí una imagen de referencia y generá un GLB listo para importar en Godot.") {
-            pending3dPrompt = "Crear personaje 3D para Godot"
-            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "image/*"
-            }, 4102)
+        add("👤  Crear personaje 3D", "Escribí directamente qué personaje querés y Lix generará el GLB para Godot.") {
+            input.setText("Creá un personaje 3D realista para The Last Launch, listo para Godot")
+            input.requestFocus()
         }
 
         add("🎞  Animar personaje", "Prepará rigging y animaciones para el personaje usando herramientas compatibles con Godot.") {
@@ -278,6 +275,12 @@ class MainActivity : AppCompatActivity() {
         if (prompt.isBlank()) {
             Toast.makeText(this, "Escribí primero qué querés que Lix haga.", Toast.LENGTH_SHORT).show()
             input.requestFocus()
+            return
+        }
+        if (LixTextTo3D.isRequest(prompt)) {
+            input.setText("")
+            status.text = "Lix 3D está generando..."
+            LixTextTo3D.start(this, prompt)
             return
         }
         if (!LixProjectManager.hasAuthorizedProject(this)) {
