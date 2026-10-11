@@ -176,7 +176,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        add("🎞  Animar personaje", "Prepará rigging y animaciones para el personaje usando herramientas compatibles con Godot.")
+        add("🎞  Animar personaje", "Prepará rigging y animaciones para el personaje usando herramientas compatibles con Godot.") {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.mixamo.com/")))
             } catch (_: Exception) {
