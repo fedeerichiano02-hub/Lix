@@ -135,8 +135,8 @@ class MainActivity : AppCompatActivity() {
             input.requestFocus()
         }
 
-        add("🧠  Conectar cerebro IA", "Configurá una API para conversar y razonar con un modelo en la nube.") {
-            LixCloudAI.configure(this)
+        add("🧠  Configurar cerebro gratuito", "Configurá OpenRouter u otro proveedor compatible con API gratuita.") {
+            configureModelRouter()
         }
 
         add("💬  Conversar con Lix IA", "Mandá una consulta al modelo en la nube sin iniciar una tarea Godot.") {
@@ -147,11 +147,11 @@ class MainActivity : AppCompatActivity() {
             } else {
                 input.setText("")
                 status.text = "Lix está pensando…"
-                LixCloudAI.ask(this, prompt) { answer ->
-                    status.text = "Respuesta recibida"
+                LixModelRouter.ask(this, prompt) { result ->
+                    status.text = if (result.isSuccess) "Respuesta recibida" else "Error de conexión"
                     android.app.AlertDialog.Builder(this)
-                        .setTitle("Lix · IA")
-                        .setMessage(answer)
+                        .setTitle(if (result.isSuccess) "Lix · IA" else "Lix · Error")
+                        .setMessage(result.getOrElse { it.message ?: "No se pudo conectar." })
                         .setPositiveButton("Cerrar", null)
                         .show()
                 }
@@ -217,6 +217,43 @@ class MainActivity : AppCompatActivity() {
         root.addView(composer, LinearLayout.LayoutParams(-1, dp(64)).apply { topMargin = dp(8) })
 
         setContentView(root)
+    }
+
+    private fun configureModelRouter() {
+        val cfg = LixModelRouter.getConfig(this)
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(4), dp(8), 0)
+        }
+        fun field(value: String, hintText: String, secret: Boolean = false): EditText {
+            return EditText(this).apply {
+                setSingleLine(true)
+                hint = hintText
+                setText(value)
+                if (secret) inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            }
+        }
+        val endpoint = field(cfg.endpoint, "Endpoint HTTPS")
+        val model = field(cfg.model, "Modelo (ej. openrouter/free)")
+        val key = field(cfg.apiKey, "Clave API", true)
+        panel.addView(endpoint)
+        panel.addView(model)
+        panel.addView(key)
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Cerebro de Lix")
+            .setMessage("Proveedor compatible con OpenAI. La clave queda guardada en el almacenamiento privado de esta app. Las cuotas gratuitas dependen del proveedor.")
+            .setView(panel)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Guardar") { _, _ ->
+                try {
+                    LixModelRouter.saveConfig(this, endpoint.text.toString(), model.text.toString(), key.text.toString())
+                    status.text = "Proveedor guardado"
+                    Toast.makeText(this, "Cerebro configurado.", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(this, e.message ?: "Configuración inválida.", Toast.LENGTH_LONG).show()
+                }
+            }
+            .show()
     }
 
     private fun buildTaskMonitor(): View {
