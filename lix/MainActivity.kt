@@ -135,6 +135,29 @@ class MainActivity : AppCompatActivity() {
             input.requestFocus()
         }
 
+        add("🧠  Conectar cerebro IA", "Configurá una API para conversar y razonar con un modelo en la nube.") {
+            LixCloudAI.configure(this)
+        }
+
+        add("💬  Conversar con Lix IA", "Mandá una consulta al modelo en la nube sin iniciar una tarea Godot.") {
+            val prompt = input.text.toString().trim()
+            if (prompt.isBlank()) {
+                Toast.makeText(this, "Escribí primero tu consulta.", Toast.LENGTH_SHORT).show()
+                input.requestFocus()
+            } else {
+                input.setText("")
+                status.text = "Lix está pensando…"
+                LixCloudAI.ask(this, prompt) { answer ->
+                    status.text = "Respuesta recibida"
+                    android.app.AlertDialog.Builder(this)
+                        .setTitle("Lix · IA")
+                        .setMessage(answer)
+                        .setPositiveButton("Cerrar", null)
+                        .show()
+                }
+            }
+        }
+
         add("🎞  Animar personaje", "Prepará rigging y animaciones para el personaje usando herramientas compatibles con Godot.") {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.mixamo.com/")))
