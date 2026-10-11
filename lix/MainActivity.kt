@@ -158,7 +158,25 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        add("🎞  Animar personaje", "Prepará rigging y animaciones para el personaje usando herramientas compatibles con Godot.") {
+        add("🌐  Buscar en internet", "Buscá información pública sin una clave API.") {
+            val query = input.text.toString().trim()
+            if (query.isBlank()) {
+                Toast.makeText(this, "Escribí qué querés buscar.", Toast.LENGTH_SHORT).show()
+                input.requestFocus()
+            } else {
+                status.text = "Buscando en internet…"
+                LixWebSearch.search(query) { result ->
+                    status.text = if (result.isSuccess) "Búsqueda terminada" else "Falló la búsqueda"
+                    android.app.AlertDialog.Builder(this)
+                        .setTitle("Lix · Búsqueda web")
+                        .setMessage(result.getOrElse { it.message ?: "Error de búsqueda." })
+                        .setPositiveButton("Cerrar", null)
+                        .show()
+                }
+            }
+        }
+
+        add("🎞  Animar personaje", "Prepará rigging y animaciones para el personaje usando herramientas compatibles con Godot.")
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.mixamo.com/")))
             } catch (_: Exception) {
