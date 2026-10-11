@@ -24,7 +24,7 @@ object LixTextTo3D {
     fun isRequest(prompt: String): Boolean {
         val q = prompt.lowercase()
         val has3d = q.contains("3d") || q.contains("tres dimensiones")
-        val create = listOf("crea", "crear", "hacé", "hace", "hacer", "generá", "genera", "generar", "modelá", "modela", "modelo").any { q.contains(it) }
+        val create = listOf("crea", "creá", "crear", "creá", "hacé", "hace", "hacer", "generá", "genera", "generar", "modelá", "modela", "modelo").any { q.contains(it) }
         return has3d && create
     }
 
