@@ -51,6 +51,13 @@ object LixModelRouter {
         }
         executor.execute {
             val result = runCatching {
+                val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                val history = runCatching { JSONArray(prefs.getString("history", "[]")) }.getOrDefault(JSONArray())
+                val messages = JSONArray().put(JSONObject().put("role", "system").put("content",
+                    "Sos Lix, un asistente personal en español rioplatense. Sé claro, honesto y útil. No afirmes haber ejecutado acciones que no ejecutaste. Conservá el contexto de esta conversación."))
+                val start = (history.length() - 12).coerceAtLeast(0)
+                for (i in start until history.length()) messages.put(history.getJSONObject(i))
+                messages.put(JSONObject().put("role", "user").put("content", prompt))
                 val url = URL(cfg.endpoint + "/chat/completions")
                 val conn = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
@@ -65,10 +72,7 @@ object LixModelRouter {
                 try {
                     val body = JSONObject()
                         .put("model", cfg.model)
-                        .put("messages", JSONArray()
-                            .put(JSONObject().put("role", "system").put("content",
-                                "Sos Lix, un asistente personal en español rioplatense. Sé claro, honesto y útil. No afirmes haber ejecutado acciones que no ejecutaste."))
-                            .put(JSONObject().put("role", "user").put("content", prompt)))
+                        .put("messages", messages)
                         .put("temperature", 0.4)
                     conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
                     val code = conn.responseCode
@@ -82,6 +86,10 @@ object LixModelRouter {
                     val answer = root.getJSONArray("choices").getJSONObject(0)
                         .getJSONObject("message").optString("content").trim()
                     if (answer.isBlank()) throw IllegalStateException("El proveedor devolvió una respuesta vacía.")
+                    history.put(JSONObject().put("role", "user").put("content", prompt))
+                    history.put(JSONObject().put("role", "assistant").put("content", answer))
+                    while (history.length() > 12) history.remove(0)
+                    prefs.edit().putString("history", history.toString()).apply()
                     answer
                 } finally {
                     conn.disconnect()
